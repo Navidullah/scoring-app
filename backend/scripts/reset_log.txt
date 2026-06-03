@@ -1,0 +1,36 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20260603140056
+Username: NAVEED\RBTG
+RunAs User: NAVEED\RBTG
+Configuration Name: 
+Machine: NAVEED (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\Users\RBTG\OneDrive\Desktop\scoring_app\backend\scripts\reset_postgres_password.ps1
+Process ID: 27836
+PSVersion: 5.1.26100.8457
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.8457
+BuildVersion: 10.0.26100.8457
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+== Checking administrator rights ==
+== Backing up pg_hba.conf ==
+   Backup: C:\Program Files\PostgreSQL\17\data\pg_hba.conf.bak_20260603_140056
+== Switching local auth to trust (temporary) ==
+== Restarting service ==
+== Setting new postgres password ==
+ALTER ROLE
+== Creating database 'scoring_app' (if it does not exist) ==
+CREATE DATABASE
+   Created scoring_app
+== Restoring original pg_hba.conf ==
+
+DONE. postgres password is now: postgres
+Database 'scoring_app' is ready. You can close this window.
+**********************
+Windows PowerShell transcript end
+End time: 20260603140106
+**********************

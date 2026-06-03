@@ -1,0 +1,195 @@
+// Cricket Scoring App — Prisma schema
+// Models mirror the entities defined in CLAUDE.md.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Offline-first snapshot sync. The mobile app stores each match/tournament as
+// a self-contained JSON document; we back it up here keyed by device + localId.
+// Local always wins for in-progress data, so the server simply upserts the
+// latest snapshot it receives.
+model SyncDocument {
+  id        String   @id @default(uuid())
+  deviceId  String
+  type      String // "match" | "tournament"
+  localId   String
+  payload   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([deviceId, type, localId])
+  @@index([deviceId])
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TournamentFormat {
+  round_robin
+  knockout
+}
+
+enum TournamentStatus {
+  upcoming
+  in_progress
+  completed
+}
+
+enum MatchStatus {
+  scheduled
+  in_progress
+  completed
+  abandoned
+}
+
+enum WicketType {
+  bowled
+  caught
+  lbw
+  run_out
+  stumped
+  hit_wicket
+  retired
+}
+
+enum ExtraType {
+  wide
+  no_ball
+  bye
+  leg_bye
+}
+
+// A device is the anonymous identity. No user auth — device-id based.
+model Device {
+  id        String   @id @default(uuid())
+  deviceId  String   @unique
+  createdAt DateTime @default(now())
+
+  tournaments Tournament[]
+  matches     Match[]
+}
+
+model Tournament {
+  id        String           @id @default(uuid())
+  name      String
+  format    TournamentFormat @default(round_robin)
+  status    TournamentStatus @default(upcoming)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  device   Device? @relation(fields: [deviceId], references: [id])
+  deviceId String?
+
+  teams   Team[]
+  matches Match[]
+}
+
+model Team {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  tournament   Tournament? @relation(fields: [tournamentId], references: [id])
+  tournamentId String?
+
+  players Player[]
+
+  matchesAsTeam1 Match[] @relation("Team1")
+  matchesAsTeam2 Match[] @relation("Team2")
+  matchesWon     Match[] @relation("Winner")
+  innings        Innings[]
+}
+
+model Player {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId String
+
+  matchStats PlayerMatchStat[]
+  ballsFaced Ball[]            @relation("Batsman")
+  ballsBowled Ball[]           @relation("Bowler")
+}
+
+model Match {
+  id        String      @id @default(uuid())
+  overs     Int         @default(20)
+  status    MatchStatus @default(scheduled)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  tournament   Tournament? @relation(fields: [tournamentId], references: [id])
+  tournamentId String?
+
+  device   Device? @relation(fields: [deviceId], references: [id])
+  deviceId String?
+
+  team1   Team   @relation("Team1", fields: [team1Id], references: [id])
+  team1Id String
+  team2   Team   @relation("Team2", fields: [team2Id], references: [id])
+  team2Id String
+
+  winner   Team?   @relation("Winner", fields: [winnerId], references: [id])
+  winnerId String?
+
+  innings    Innings[]
+  playerStats PlayerMatchStat[]
+}
+
+model Innings {
+  id        String   @id @default(uuid())
+  inningsNo Int      @default(1)
+  createdAt DateTime @default(now())
+
+  match   Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  matchId String
+
+  battingTeam   Team   @relation(fields: [battingTeamId], references: [id])
+  battingTeamId String
+
+  balls Ball[]
+}
+
+model Ball {
+  id        String     @id @default(uuid())
+  overNo    Int
+  ballNo    Int
+  runs      Int        @default(0)
+  extraType ExtraType?
+  extraRuns Int        @default(0)
+  wicket    WicketType?
+  createdAt DateTime   @default(now())
+
+  innings   Innings @relation(fields: [inningsId], references: [id], onDelete: Cascade)
+  inningsId String
+
+  batsman   Player @relation("Batsman", fields: [batsmanId], references: [id])
+  batsmanId String
+  bowler    Player @relation("Bowler", fields: [bowlerId], references: [id])
+  bowlerId  String
+
+  @@index([inningsId, overNo, ballNo])
+}
+
+model PlayerMatchStat {
+  id           String @id @default(uuid())
+  runs         Int    @default(0)
+  balls        Int    @default(0)
+  fours        Int    @default(0)
+  sixes        Int    @default(0)
+  wickets      Int    @default(0)
+  oversBowled  Float  @default(0)
+  runsConceded Int    @default(0)
+
+  match   Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  matchId String
+  player  Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  playerId String
+
+  @@unique([matchId, playerId])
+}

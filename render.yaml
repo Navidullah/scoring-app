@@ -1,0 +1,18 @@
+# Render Blueprint for the Cricket Scoring backend.
+# In Render: New + > Blueprint, point at this repo. It reads this file.
+# You must set the DATABASE_URL env var (your Neon connection string) in the
+# Render dashboard — it is intentionally not stored here (sync: false).
+services:
+  - type: web
+    name: scoring-app-backend
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install && npx prisma generate && npx prisma migrate deploy
+    startCommand: node src/index.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: NODE_ENV
+        value: production

@@ -1,0 +1,26 @@
+# --- Secrets (NEVER commit) ---
+**/.env
+*.env
+# keep templates
+!**/.env.example
+
+# --- Node / backend ---
+**/node_modules/
+**/npm-debug.log*
+backend/dist/
+
+# --- Dart / Flutter ---
+app/build/
+app/.dart_tool/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/.packages
+**/*.iml
+**/.idea/
+
+# --- Local tooling / scratch ---
+.shots/
+
+# --- OS ---
+.DS_Store
+Thumbs.db
