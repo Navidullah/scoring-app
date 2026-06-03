@@ -4,6 +4,11 @@
 # keep templates
 !**/.env.example
 
+# --- Android signing (NEVER commit) ---
+**/key.properties
+**/*.jks
+**/*.keystore
+
 # --- Node / backend ---
 **/node_modules/
 **/npm-debug.log*
