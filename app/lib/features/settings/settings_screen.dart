@@ -120,7 +120,7 @@ class SettingsScreen extends ConsumerWidget {
                 const Divider(height: 1),
                 const AboutListTile(
                   icon: Icon(Icons.info_outline_rounded),
-                  applicationName: 'Cricket Scoring',
+                  applicationName: 'CricLive',
                   applicationVersion: '1.0.0',
                   child: Text('About this app'),
                 ),

@@ -2,8 +2,8 @@
 class AppStrings {
   const AppStrings._();
 
-  static const String appName = 'Cricket Scoring';
-  static const String homeTitle = 'Cricket Scoring';
+  static const String appName = 'CricLive';
+  static const String homeTitle = 'CricLive';
   static const String newMatch = 'New Match';
   static const String tournaments = 'Tournaments';
   static const String history = 'History';

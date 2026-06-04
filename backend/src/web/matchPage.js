@@ -9,7 +9,7 @@ function matchPageHtml(rawId) {
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Live Match — Cricket Scoring</title>
+<title>Live Match — CricLive</title>
 <style>
   :root { --bg1:#0A0E1A; --bg2:#0B1630; --card:rgba(255,255,255,.05); --stroke:rgba(255,255,255,.14);
     --green:#12E29A; --cyan:#22D3EE; --amber:#FFB020; --red:#FF4D6D; --hi:#F2F6FC; --mid:rgba(255,255,255,.66); --low:rgba(255,255,255,.42); }
@@ -53,7 +53,7 @@ function matchPageHtml(rawId) {
 </head>
 <body>
   <div class="wrap">
-    <div class="brand"><span class="dot"></span><b>CRICKET SCORING</b></div>
+    <div class="brand"><span class="dot"></span><b>CRICLIVE</b></div>
     <div id="root"><div class="msg">Loading live match…</div></div>
     <div class="foot" id="foot"></div>
   </div>

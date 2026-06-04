@@ -42,7 +42,7 @@ class MatchShareCard extends StatelessWidget {
               const NeonIconBadge(icon: Icons.sports_cricket_rounded, size: 34, iconSize: 18),
               const SizedBox(width: 10),
               const GradientText(
-                'CRICKET SCORING',
+                'CRICLIVE',
                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1.2),
               ),
               const Spacer(),
@@ -137,7 +137,7 @@ class MatchShareCard extends StatelessWidget {
           const SizedBox(height: 16),
           const Center(
             child: Text(
-              'Scored with Cricket Scoring',
+              'Scored with CricLive',
               style: TextStyle(color: AppColors.textLow, fontSize: 10),
             ),
           ),
