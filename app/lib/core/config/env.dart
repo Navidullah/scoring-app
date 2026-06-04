@@ -18,6 +18,8 @@ class Env {
   /// Public live scoreboard URL for a match.
   static String liveMatchUrl(String matchId) => '$webBaseUrl/m/$matchId';
 
-  static const Duration connectTimeout = Duration(seconds: 15);
-  static const Duration receiveTimeout = Duration(seconds: 15);
+  // Generous timeouts: the free-tier backend can take ~30s to wake from sleep
+  // (cold start), so a short timeout would wrongly look like "offline".
+  static const Duration connectTimeout = Duration(seconds: 60);
+  static const Duration receiveTimeout = Duration(seconds: 60);
 }

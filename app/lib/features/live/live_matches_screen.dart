@@ -22,6 +22,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen> {
   List<Map<String, dynamic>> _matches = const [];
   bool _loading = true;
   bool _failed = false;
+  bool _inFlight = false;
   Timer? _timer;
 
   @override
@@ -38,6 +39,8 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen> {
   }
 
   Future<void> _load({bool silent = false}) async {
+    if (_inFlight) return; // don't stack requests while the server wakes up
+    _inFlight = true;
     if (!silent) setState(() => _loading = true);
     try {
       final list = await ref.read(liveApiProvider).list();
@@ -53,6 +56,8 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen> {
         _loading = false;
         _failed = _matches.isEmpty;
       });
+    } finally {
+      _inFlight = false;
     }
   }
 
@@ -82,7 +87,20 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen> {
 
   Widget _buildBody() {
     if (_loading && _matches.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 18),
+            Text('Connecting to live matches…',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: context.txMid)),
+            const SizedBox(height: 4),
+            Text('The server may take a few seconds to wake up.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: context.txLow)),
+          ],
+        ),
+      );
     }
     if (_failed && _matches.isEmpty) {
       return ListView(
