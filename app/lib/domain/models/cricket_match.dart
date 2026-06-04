@@ -4,6 +4,10 @@ import 'innings.dart';
 MatchStatus _statusFromName(String? n) =>
     n == null ? MatchStatus.inProgress : MatchStatus.values.firstWhere((e) => e.name == n);
 
+BallType _ballTypeFromName(String? n) => n == null
+    ? BallType.leather
+    : BallType.values.firstWhere((e) => e.name == n, orElse: () => BallType.leather);
+
 /// A full match: two teams, overs limit, and one or two innings.
 class CricketMatch {
   const CricketMatch({
@@ -16,6 +20,8 @@ class CricketMatch {
     required this.createdAt,
     this.status = MatchStatus.inProgress,
     this.resultText,
+    this.ballType = BallType.leather,
+    this.lbwAllowed = true,
   });
 
   final String id;
@@ -27,6 +33,8 @@ class CricketMatch {
   final MatchStatus status;
   final String? resultText;
   final DateTime createdAt;
+  final BallType ballType;
+  final bool lbwAllowed;
 
   Innings get currentInnings => innings.last;
   bool get isSecondInnings => innings.length == 2;
@@ -60,6 +68,8 @@ class CricketMatch {
       status: status ?? this.status,
       resultText: clearResultText ? null : (resultText ?? this.resultText),
       createdAt: createdAt,
+      ballType: ballType,
+      lbwAllowed: lbwAllowed,
     );
   }
 
@@ -80,6 +90,8 @@ class CricketMatch {
         'status': status.name,
         'resultText': resultText,
         'createdAt': createdAt.toIso8601String(),
+        'ballType': ballType.name,
+        'lbwAllowed': lbwAllowed,
       };
 
   factory CricketMatch.fromJson(Map<String, dynamic> json) => CricketMatch(
@@ -94,5 +106,7 @@ class CricketMatch {
         status: _statusFromName(json['status'] as String?),
         resultText: json['resultText'] as String?,
         createdAt: DateTime.parse(json['createdAt'] as String),
+        ballType: _ballTypeFromName(json['ballType'] as String?),
+        lbwAllowed: (json['lbwAllowed'] as bool?) ?? true,
       );
 }

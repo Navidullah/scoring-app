@@ -23,6 +23,13 @@ enum TournamentFormat {
   knockout,
 }
 
+/// Ball used for the match. Tennis/rubber-ball cricket is hugely popular in
+/// South Asia and is usually scored without LBW.
+enum BallType {
+  leather,
+  tennis,
+}
+
 /// Lifecycle states for a match.
 enum MatchStatus {
   scheduled,

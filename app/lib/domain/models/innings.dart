@@ -62,6 +62,17 @@ class Innings {
   double get runRate =>
       legalBalls == 0 ? 0 : (runs * AppConstants.ballsPerOver) / legalBalls;
 
+  /// True when the next delivery is a free hit — i.e. the most recent delivery
+  /// (ignoring wides, which don't consume the free hit) was a no-ball. On a free
+  /// hit the batsman can only be dismissed run out.
+  bool get isFreeHit {
+    for (final b in balls.reversed) {
+      if (b.extraType == ExtraType.noBall) return true;
+      if (b.isLegal) return false;
+    }
+    return false;
+  }
+
   /// Deliveries belonging to the over currently in progress (includes extras).
   List<BallEvent> get currentOverBalls {
     final result = <BallEvent>[];
@@ -127,6 +138,30 @@ class Innings {
       if (seen.add(b.bowlerName)) order.add(b.bowlerName);
     }
     return order;
+  }
+
+  /// Runs and wickets per over (Manhattan data). The trailing entry may be an
+  /// in-progress over. Runs include extras conceded in that over.
+  List<({int runs, int wickets})> get overBreakdown {
+    final result = <({int runs, int wickets})>[];
+    var legalInOver = 0, runs = 0, wkts = 0, ballsInOver = 0;
+    for (final b in balls) {
+      runs += b.totalRuns;
+      ballsInOver++;
+      if (b.wicket != null) wkts++;
+      if (b.isLegal) {
+        legalInOver++;
+        if (legalInOver % AppConstants.ballsPerOver == 0) {
+          result.add((runs: runs, wickets: wkts));
+          runs = 0;
+          wkts = 0;
+          legalInOver = 0;
+          ballsInOver = 0;
+        }
+      }
+    }
+    if (ballsInOver > 0) result.add((runs: runs, wickets: wkts));
+    return result;
   }
 
   /// Maiden overs bowled by [bowler] (an over with zero runs charged to them).

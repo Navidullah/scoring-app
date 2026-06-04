@@ -28,6 +28,8 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
   final _team2 = TextEditingController(text: 'Team B');
   int _overs = AppConstants.defaultOvers;
   bool _team1BatsFirst = true;
+  BallType _ballType = BallType.leather;
+  bool _lbwAllowed = true;
 
   static const _overOptions = [5, 6, 8, 10, 15, 20, 50];
 
@@ -53,6 +55,8 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
       battingFirst: battingFirst,
       createdAt: DateTime.now(),
       status: MatchStatus.inProgress,
+      ballType: _ballType,
+      lbwAllowed: _lbwAllowed,
       innings: [Innings(battingTeam: battingFirst, bowlingTeam: bowlingFirst)],
     );
 
@@ -147,6 +151,42 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                       selected: {_team1BatsFirst},
                       onSelectionChanged: (s) => setState(() => _team1BatsFirst = s.first),
                     ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text('Ball type', style: Theme.of(context).textTheme.titleSmall),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: SegmentedButton<BallType>(
+                      segments: const [
+                        ButtonSegment(
+                          value: BallType.leather,
+                          label: Text('Leather'),
+                          icon: Icon(Icons.sports_cricket_rounded),
+                        ),
+                        ButtonSegment(
+                          value: BallType.tennis,
+                          label: Text('Tennis'),
+                          icon: Icon(Icons.sports_baseball_rounded),
+                        ),
+                      ],
+                      selected: {_ballType},
+                      onSelectionChanged: (s) => setState(() {
+                        _ballType = s.first;
+                        // Tennis-ball cricket is almost always played without LBW.
+                        _lbwAllowed = _ballType == BallType.leather;
+                      }),
+                    ),
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('LBW allowed'),
+                    subtitle: Text(
+                      _lbwAllowed ? 'LBW is available as a dismissal' : 'LBW hidden when scoring',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: context.txLow),
+                    ),
+                    value: _lbwAllowed,
+                    onChanged: (v) => setState(() => _lbwAllowed = v),
                   ),
                 ],
               ),

@@ -5,6 +5,7 @@ import '../../../domain/models/innings.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../../shared/widgets/ui_widgets.dart';
 import '../scorecard_format.dart';
+import 'manhattan_chart.dart';
 
 /// Full batting + bowling card for a single innings.
 class InningsScorecard extends StatelessWidget {
@@ -73,6 +74,10 @@ class InningsScorecard extends StatelessWidget {
             _bowlHeader(theme),
             const Divider(height: 12),
             ...bowlers.map((b) => _bowlRow(context, b)),
+            const SizedBox(height: 18),
+            const Divider(height: 1),
+            const SizedBox(height: 16),
+            ManhattanChart(overs: innings.overBreakdown),
           ],
         ),
       );

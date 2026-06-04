@@ -1,5 +1,8 @@
 import 'package:go_router/go_router.dart';
+import 'package:hive/hive.dart';
 
+import '../constants/app_constants.dart';
+import '../../features/onboarding/onboarding_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/match/match_setup_screen.dart';
 import '../../features/match/live_scoring_screen.dart';
@@ -16,6 +19,7 @@ class AppRoutes {
   const AppRoutes._();
 
   static const String home = '/';
+  static const String onboarding = '/onboarding';
   static const String matchSetup = '/match/setup';
   static String matchScore(String id) => '/match/$id/score';
   static const String tournaments = '/tournaments';
@@ -26,7 +30,19 @@ class AppRoutes {
 
 final appRouter = GoRouter(
   initialLocation: AppRoutes.home,
+  // Show onboarding once on first launch, then never again.
+  redirect: (context, state) {
+    final done = Hive.box<dynamic>(HiveBoxes.settings).get('onboardingDone') == true;
+    final atOnboarding = state.matchedLocation == AppRoutes.onboarding;
+    if (!done && !atOnboarding) return AppRoutes.onboarding;
+    if (done && atOnboarding) return AppRoutes.home;
+    return null;
+  },
   routes: [
+    GoRoute(
+      path: AppRoutes.onboarding,
+      builder: (context, state) => const OnboardingScreen(),
+    ),
     GoRoute(
       path: AppRoutes.home,
       builder: (context, state) => const HomeScreen(),

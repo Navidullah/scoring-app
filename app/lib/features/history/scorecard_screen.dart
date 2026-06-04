@@ -9,6 +9,7 @@ import '../../shared/widgets/glass_card.dart';
 import '../../shared/widgets/ui_widgets.dart';
 import 'services/player_of_match.dart';
 import 'services/scorecard_pdf.dart';
+import 'services/share_image.dart';
 import 'widgets/innings_scorecard.dart';
 
 /// Full scorecard for a match: result banner + a card per innings.
@@ -30,19 +31,41 @@ class ScorecardScreen extends ConsumerWidget {
         ),
         actions: [
           if (match != null)
-            IconButton(
+            PopupMenuButton<String>(
               icon: const Icon(Icons.ios_share),
-              tooltip: 'Share / download',
-              onPressed: () async {
+              tooltip: 'Share',
+              onSelected: (v) async {
                 final messenger = ScaffoldMessenger.of(context);
                 try {
-                  await shareScorecardPdf(match);
+                  if (v == 'image') {
+                    await shareMatchImage(context, match);
+                  } else {
+                    await shareScorecardPdf(match);
+                  }
                 } catch (e) {
                   messenger.showSnackBar(
                     SnackBar(content: Text('Could not share scorecard: $e')),
                   );
                 }
               },
+              itemBuilder: (_) => const [
+                PopupMenuItem(
+                  value: 'image',
+                  child: Row(children: [
+                    Icon(Icons.image_rounded, size: 20),
+                    SizedBox(width: 10),
+                    Text('Share as image'),
+                  ]),
+                ),
+                PopupMenuItem(
+                  value: 'pdf',
+                  child: Row(children: [
+                    Icon(Icons.picture_as_pdf_rounded, size: 20),
+                    SizedBox(width: 10),
+                    Text('Share as PDF'),
+                  ]),
+                ),
+              ],
             ),
         ],
       ),
@@ -61,6 +84,11 @@ class ScorecardScreen extends ConsumerWidget {
                         '${match.team1}  vs  ${match.team2}',
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${match.ballType == BallType.tennis ? 'Tennis' : 'Leather'} ball  ·  ${match.overs} overs',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: context.txLow),
                       ),
                       const SizedBox(height: 8),
                       Container(

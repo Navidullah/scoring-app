@@ -45,6 +45,27 @@ class _LiveScoringScreenState extends ConsumerState<LiveScoringScreen> {
           icon: const Icon(Icons.home),
           onPressed: () => context.go('/'),
         ),
+        actions: [
+          if (!match.isComplete)
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert_rounded),
+              onSelected: (v) {
+                if (v == 'retire') _onRetire();
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(
+                  value: 'retire',
+                  child: Row(
+                    children: [
+                      Icon(Icons.directions_walk_rounded, size: 20),
+                      SizedBox(width: 10),
+                      Text('Retire batsman'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+        ],
       ),
       body: match.isComplete
           ? _ResultView(matchId: match.id, resultText: match.resultText ?? 'Match complete')
@@ -61,6 +82,7 @@ class _LiveScoringScreenState extends ConsumerState<LiveScoringScreen> {
                     ),
                   ),
                 ),
+                if (match.currentInnings.isFreeHit) const _FreeHitBanner(),
                 ScoringPad(
                   enabled: _controller.canScore,
                   onRuns: _controller.scoreRuns,
@@ -106,10 +128,78 @@ class _LiveScoringScreenState extends ConsumerState<LiveScoringScreen> {
   }
 
   Future<void> _onWicket() async {
-    final result = await showWicketDialog(context);
+    final match = ref.read(liveScoringControllerProvider(widget.matchId));
+    final inn = match.currentInnings;
+    final result = await showWicketDialog(
+      context,
+      striker: inn.striker ?? 'Striker',
+      nonStriker: inn.nonStriker ?? 'Non-striker',
+      lbwAllowed: match.lbwAllowed,
+      runOutOnly: inn.isFreeHit,
+    );
     if (result != null) {
-      _controller.scoreWicket(result.type, newBatsman: result.batsman, fielder: result.fielder);
+      _controller.scoreWicket(
+        result.type,
+        newBatsman: result.batsman,
+        fielder: result.fielder,
+        nonStrikerOut: result.nonStrikerOut,
+      );
     }
+  }
+
+  Future<void> _onRetire() async {
+    final inn = ref.read(liveScoringControllerProvider(widget.matchId)).currentInnings;
+    if (inn.striker == null || inn.nonStriker == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Both batsmen must be in before retiring.')),
+      );
+      return;
+    }
+    final r = await showRetireDialog(context, striker: inn.striker!, nonStriker: inn.nonStriker!);
+    if (r != null) {
+      _controller.retire(nonStriker: r.nonStriker, replacement: r.replacement);
+    }
+  }
+}
+
+/// Thin amber strip shown when the next delivery is a free hit.
+class _FreeHitBanner extends StatelessWidget {
+  const _FreeHitBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(colors: AppColors.amber),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.accent.withValues(alpha: 0.4),
+            blurRadius: 14,
+            spreadRadius: -4,
+          ),
+        ],
+      ),
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.bolt_rounded, color: Colors.white, size: 18),
+          SizedBox(width: 6),
+          Text(
+            'FREE HIT  •  batter can only be run out',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+              fontSize: 13,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

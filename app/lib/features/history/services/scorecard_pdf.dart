@@ -57,6 +57,11 @@ Future<Uint8List> buildScorecardPdf(CricketMatch match) async {
   return doc.save();
 }
 
+String _ballLabel(CricketMatch match) {
+  final n = match.ballType.name;
+  return n[0].toUpperCase() + n.substring(1);
+}
+
 // ---- Header band -----------------------------------------------------------
 pw.Widget _headerBand(CricketMatch match, PlayerImpact? potm) {
   return pw.Container(
@@ -105,7 +110,7 @@ pw.Widget _headerBand(CricketMatch match, PlayerImpact? potm) {
         ),
         pw.SizedBox(height: 3),
         pw.Text(
-          '${match.overs} overs per side',
+          '${_ballLabel(match)} ball  -  ${match.overs} overs per side',
           style: pw.TextStyle(color: _onBand, fontSize: 10),
         ),
         if (match.resultText != null) ...[

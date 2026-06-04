@@ -72,17 +72,46 @@ Future<int?> showRunCountDialog(BuildContext context, {required String title}) {
   );
 }
 
-/// Outcome of the wicket dialog: how out, who's the new batsman, and (for
-/// caught/stumped/run-out) the fielder involved.
-typedef WicketEntry = ({WicketType type, String batsman, String? fielder});
+/// Outcome of the wicket dialog: how out, who's the new batsman, the fielder
+/// (for caught/stumped/run-out), and whether the non-striker was the one out
+/// (run-out only).
+typedef WicketEntry = ({WicketType type, String batsman, String? fielder, bool nonStrikerOut});
 
-/// Prompts for the wicket type, the fielder (when relevant), and the incoming
-/// batsman's name.
-Future<WicketEntry?> showWicketDialog(BuildContext context) {
+/// Prompts for the wicket type, the fielder (when relevant), the incoming
+/// batsman's name, and — for a run-out — which batsman was out.
+/// [lbwAllowed] hides LBW (e.g. tennis-ball matches). [runOutOnly] restricts
+/// dismissals to run-out (used on a free hit).
+Future<WicketEntry?> showWicketDialog(
+  BuildContext context, {
+  required String striker,
+  required String nonStriker,
+  bool lbwAllowed = true,
+  bool runOutOnly = false,
+}) {
   return showDialog<WicketEntry>(
     context: context,
     barrierDismissible: false,
-    builder: (_) => const _WicketDialog(),
+    builder: (_) => _WicketDialog(
+      striker: striker,
+      nonStriker: nonStriker,
+      lbwAllowed: lbwAllowed,
+      runOutOnly: runOutOnly,
+    ),
+  );
+}
+
+/// Outcome of the retire dialog.
+typedef RetireEntry = ({bool nonStriker, String replacement});
+
+/// Prompts for which batsman is retiring and who replaces them.
+Future<RetireEntry?> showRetireDialog(
+  BuildContext context, {
+  required String striker,
+  required String nonStriker,
+}) {
+  return showDialog<RetireEntry>(
+    context: context,
+    builder: (_) => _RetireDialog(striker: striker, nonStriker: nonStriker),
   );
 }
 
@@ -187,14 +216,24 @@ class _NameDialogState extends State<_NameDialog> {
 }
 
 class _WicketDialog extends StatefulWidget {
-  const _WicketDialog();
+  const _WicketDialog({
+    required this.striker,
+    required this.nonStriker,
+    this.lbwAllowed = true,
+    this.runOutOnly = false,
+  });
+  final String striker;
+  final String nonStriker;
+  final bool lbwAllowed;
+  final bool runOutOnly;
 
   @override
   State<_WicketDialog> createState() => _WicketDialogState();
 }
 
 class _WicketDialogState extends State<_WicketDialog> {
-  WicketType _type = WicketType.bowled;
+  late WicketType _type = widget.runOutOnly ? WicketType.runOut : WicketType.bowled;
+  bool _nonStrikerOut = false;
   final _batsman = TextEditingController();
   final _fielder = TextEditingController();
 
@@ -205,23 +244,53 @@ class _WicketDialogState extends State<_WicketDialog> {
     super.dispose();
   }
 
+  /// Dismissal options: on a free hit only run-out is allowed; otherwise LBW is
+  /// hidden when not allowed and "Retired" is excluded (it's a separate action).
+  List<WicketType> get _options {
+    if (widget.runOutOnly) return [WicketType.runOut];
+    return wicketLabels.keys.where((w) {
+      if (w == WicketType.retired) return false;
+      if (w == WicketType.lbw && !widget.lbwAllowed) return false;
+      return true;
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final fielderLabel = _fielderLabel[_type];
     final needsFielder = fielderLabel != null;
     return AlertDialog(
-      title: const Text('Wicket!'),
+      title: Text(widget.runOutOnly ? 'Run out (free hit)' : 'Wicket!'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           DropdownButtonFormField<WicketType>(
             initialValue: _type,
             decoration: const InputDecoration(labelText: 'How out?'),
-            items: wicketLabels.entries
-                .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+            items: _options
+                .map((w) => DropdownMenuItem(value: w, child: Text(wicketLabels[w]!)))
                 .toList(),
-            onChanged: (v) => setState(() => _type = v ?? _type),
+            onChanged: widget.runOutOnly ? null : (v) => setState(() => _type = v ?? _type),
           ),
+          if (_type == WicketType.runOut) ...[
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Who is out?', style: Theme.of(context).textTheme.labelMedium),
+            ),
+            const SizedBox(height: 6),
+            SizedBox(
+              width: double.infinity,
+              child: SegmentedButton<bool>(
+                segments: [
+                  ButtonSegment(value: false, label: Text(widget.striker)),
+                  ButtonSegment(value: true, label: Text(widget.nonStriker)),
+                ],
+                selected: {_nonStrikerOut},
+                onSelectionChanged: (s) => setState(() => _nonStrikerOut = s.first),
+              ),
+            ),
+          ],
           if (needsFielder)
             TextField(
               controller: _fielder,
@@ -247,6 +316,7 @@ class _WicketDialogState extends State<_WicketDialog> {
               type: _type,
               batsman: name,
               fielder: needsFielder && fielder.isNotEmpty ? fielder : null,
+              nonStrikerOut: _type == WicketType.runOut && _nonStrikerOut,
             ));
           },
           child: const Text('Confirm'),
@@ -319,5 +389,68 @@ class _BowlerDialogState extends State<_BowlerDialog> {
         FilledButton(onPressed: _submitNew, child: const Text('Add')),
       ],
     );
+  }
+}
+
+class _RetireDialog extends StatefulWidget {
+  const _RetireDialog({required this.striker, required this.nonStriker});
+  final String striker;
+  final String nonStriker;
+
+  @override
+  State<_RetireDialog> createState() => _RetireDialogState();
+}
+
+class _RetireDialogState extends State<_RetireDialog> {
+  bool _nonStriker = false;
+  final _replacement = TextEditingController();
+
+  @override
+  void dispose() {
+    _replacement.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Retire batsman'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Who is retiring?', style: Theme.of(context).textTheme.labelMedium),
+          const SizedBox(height: 6),
+          SizedBox(
+            width: double.infinity,
+            child: SegmentedButton<bool>(
+              segments: [
+                ButtonSegment(value: false, label: Text(widget.striker)),
+                ButtonSegment(value: true, label: Text(widget.nonStriker)),
+              ],
+              selected: {_nonStriker},
+              onSelectionChanged: (s) => setState(() => _nonStriker = s.first),
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _replacement,
+            autofocus: true,
+            decoration: const InputDecoration(labelText: 'New batsman'),
+            onSubmitted: (_) => _submit(),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        FilledButton(onPressed: _submit, child: const Text('Retire')),
+      ],
+    );
+  }
+
+  void _submit() {
+    final name = _replacement.text.trim();
+    if (name.isEmpty) return;
+    Navigator.of(context).pop((nonStriker: _nonStriker, replacement: name));
   }
 }

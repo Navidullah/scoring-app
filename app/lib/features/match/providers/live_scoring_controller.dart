@@ -75,9 +75,15 @@ class LiveScoringController extends StateNotifier<CricketMatch> {
     }
   }
 
-  void scoreWicket(WicketType type, {required String newBatsman, String? fielder}) {
+  void scoreWicket(
+    WicketType type, {
+    required String newBatsman,
+    String? fielder,
+    bool nonStrikerOut = false,
+  }) {
     if (!canScore) return;
-    final out = _inn.striker;
+    // Only a run-out can dismiss the non-striker; everything else is the striker.
+    final out = nonStrikerOut ? _inn.nonStriker : _inn.striker;
     _applyBall(
       runs: 0,
       wicket: type,
@@ -85,7 +91,20 @@ class LiveScoringController extends StateNotifier<CricketMatch> {
       fielder: fielder,
       ranBetweenWickets: 0,
       incomingBatsman: newBatsman.trim(),
+      nonStrikerOut: nonStrikerOut,
     );
+  }
+
+  /// Retires a batsman (e.g. retired hurt). Not a dismissal: no ball is bowled
+  /// and no wicket is recorded — the named end simply gets a new batsman. The
+  /// retired player keeps their figures and may return later under the same name.
+  void retire({required bool nonStriker, required String replacement}) {
+    if (state.isComplete || _inn.isComplete) return;
+    final name = replacement.trim();
+    if (name.isEmpty) return;
+    _commit(state.withCurrentInnings(
+      nonStriker ? _inn.copyWith(nonStriker: name) : _inn.copyWith(striker: name),
+    ));
   }
 
   void _applyBall({
@@ -97,6 +116,7 @@ class LiveScoringController extends StateNotifier<CricketMatch> {
     String? outBatsman,
     String? fielder,
     String? incomingBatsman,
+    bool nonStrikerOut = false,
   }) {
     final ball = BallEvent(
       id: _uuid.v4(),
@@ -114,9 +134,13 @@ class LiveScoringController extends StateNotifier<CricketMatch> {
     var striker = _inn.striker!;
     var nonStriker = _inn.nonStriker!;
 
-    // The new batsman comes in on strike (V1 assumes striker is the one out).
+    // The dismissed batsman is replaced; a run-out can take the non-striker.
     if (wicket != null) {
-      striker = incomingBatsman ?? striker;
+      if (nonStrikerOut) {
+        nonStriker = incomingBatsman ?? nonStriker;
+      } else {
+        striker = incomingBatsman ?? striker;
+      }
     }
 
     // Rotate strike on odd runs run between the wickets.
