@@ -1,13 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/string_utils.dart';
+import '../../../data/remote/sync_api.dart';
 import '../../../data/repositories/match_repository.dart';
 import '../../../domain/enums/cricket_enums.dart';
 import '../../../domain/models/ball_event.dart';
 import '../../../domain/models/cricket_match.dart';
 import '../../../domain/models/innings.dart';
+import '../../../shared/providers/app_providers.dart';
 import '../../../shared/providers/repository_providers.dart';
 
 const _uuid = Uuid();
@@ -19,9 +23,15 @@ const int _maxWickets = 10;
 /// scoring rules (strike rotation, over/innings transitions), and persists
 /// every change to the repository (offline-first).
 class LiveScoringController extends StateNotifier<CricketMatch> {
-  LiveScoringController(this._repo, CricketMatch initial) : super(initial);
+  LiveScoringController(this._repo, CricketMatch initial, {this.syncApi, this.deviceId})
+      : super(initial);
 
   final MatchRepository _repo;
+
+  /// Optional cloud push so others can follow the match live. Best-effort.
+  final SyncApi? syncApi;
+  final String? deviceId;
+  Timer? _liveTimer;
 
   Innings get _inn => state.currentInnings;
 
@@ -39,6 +49,36 @@ class LiveScoringController extends StateNotifier<CricketMatch> {
   void _commit(CricketMatch match) {
     state = match;
     _repo.saveMatch(match);
+    // Push to the cloud so viewers can follow live. Debounced for rapid taps;
+    // a finished match pushes immediately so the result lands right away.
+    _scheduleLivePush(immediate: match.isComplete);
+  }
+
+  void _scheduleLivePush({bool immediate = false}) {
+    if (syncApi == null || deviceId == null) return;
+    _liveTimer?.cancel();
+    if (immediate) {
+      _livePush();
+    } else {
+      _liveTimer = Timer(const Duration(milliseconds: 700), _livePush);
+    }
+  }
+
+  Future<void> _livePush() async {
+    final api = syncApi;
+    final id = deviceId;
+    if (api == null || id == null) return;
+    try {
+      await api.push(id, [state.toJson()], const []);
+    } catch (_) {
+      // Best-effort: offline is fine — manual "Sync now" remains the backup.
+    }
+  }
+
+  @override
+  void dispose() {
+    _liveTimer?.cancel();
+    super.dispose();
   }
 
   // --- Player setup ---------------------------------------------------------
@@ -258,5 +298,10 @@ final liveScoringControllerProvider = StateNotifierProvider.autoDispose
   if (match == null) {
     throw StateError('Match $matchId not found in local store');
   }
-  return LiveScoringController(repo, match);
+  return LiveScoringController(
+    repo,
+    match,
+    syncApi: ref.read(syncApiProvider),
+    deviceId: ref.read(deviceIdProvider),
+  );
 });

@@ -23,6 +23,8 @@ class HomeScreen extends StatelessWidget {
             const _HomeHeader(),
             const SizedBox(height: 22),
             const _HeroMatchCard(),
+            const SizedBox(height: 14),
+            const _LiveBanner(),
             const SizedBox(height: 26),
             const SectionHeader('Explore'),
             GridView.count(
@@ -149,6 +151,56 @@ class _HeroMatchCard extends StatelessWidget {
             icon: Icons.play_arrow_rounded,
             onPressed: () => context.push(AppRoutes.matchSetup),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LiveBanner extends StatelessWidget {
+  const _LiveBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return GlassCard(
+      glowColor: AppColors.wicket,
+      padding: const EdgeInsets.all(16),
+      onTap: () => context.push(AppRoutes.live),
+      child: Row(
+        children: [
+          const NeonIconBadge(
+            icon: Icons.podcasts_rounded,
+            gradient: AppColors.wicketGrad,
+            size: 48,
+            iconSize: 24,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: const BoxDecoration(color: AppColors.wicket, shape: BoxShape.circle),
+                    ),
+                    const SizedBox(width: 6),
+                    Text('LIVE',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                            color: AppColors.wicket, fontWeight: FontWeight.w800, letterSpacing: 1.4)),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text('Live Matches', style: theme.textTheme.titleMedium),
+                Text('Watch matches happening now',
+                    style: theme.textTheme.bodySmall?.copyWith(color: context.txLow)),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right_rounded, color: AppColors.textLow),
         ],
       ),
     );

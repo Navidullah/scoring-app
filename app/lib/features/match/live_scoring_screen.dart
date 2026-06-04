@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 
+import '../../core/config/env.dart';
 import '../../core/theme/app_colors.dart';
 import '../../domain/enums/cricket_enums.dart';
 import '../../shared/widgets/glass_card.dart';
@@ -51,8 +53,19 @@ class _LiveScoringScreenState extends ConsumerState<LiveScoringScreen> {
               icon: const Icon(Icons.more_vert_rounded),
               onSelected: (v) {
                 if (v == 'retire') _onRetire();
+                if (v == 'share') shareLiveMatchLink(widget.matchId);
               },
               itemBuilder: (_) => const [
+                PopupMenuItem(
+                  value: 'share',
+                  child: Row(
+                    children: [
+                      Icon(Icons.podcasts_rounded, size: 20),
+                      SizedBox(width: 10),
+                      Text('Share live link'),
+                    ],
+                  ),
+                ),
                 PopupMenuItem(
                   value: 'retire',
                   child: Row(
@@ -159,6 +172,13 @@ class _LiveScoringScreenState extends ConsumerState<LiveScoringScreen> {
   }
 }
 
+/// Shares the public live-scoreboard link for [matchId] (opens in any browser).
+Future<void> shareLiveMatchLink(String matchId) {
+  return SharePlus.instance.share(
+    ShareParams(text: 'Follow my cricket match live:\n${Env.liveMatchUrl(matchId)}'),
+  );
+}
+
 /// Thin amber strip shown when the next delivery is a free hit.
 class _FreeHitBanner extends StatelessWidget {
   const _FreeHitBanner();
@@ -243,6 +263,12 @@ class _ResultView extends StatelessWidget {
                 label: 'View Scorecard',
                 icon: Icons.assignment_rounded,
                 onPressed: () => context.push('/match/$matchId/scorecard'),
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: () => shareLiveMatchLink(matchId),
+                icon: const Icon(Icons.podcasts_rounded),
+                label: const Text('Share match link'),
               ),
               const SizedBox(height: 10),
               OutlinedButton.icon(

@@ -11,6 +11,13 @@ class Env {
     defaultValue: 'https://scoring-app-backend-xs6g.onrender.com/api',
   );
 
+  /// Origin of the backend (without the trailing /api) — used to build the
+  /// public live-match web link, e.g. `$webBaseUrl/m/{matchId}`.
+  static String get webBaseUrl => apiBaseUrl.replaceFirst(RegExp(r'/api/?$'), '');
+
+  /// Public live scoreboard URL for a match.
+  static String liveMatchUrl(String matchId) => '$webBaseUrl/m/$matchId';
+
   static const Duration connectTimeout = Duration(seconds: 15);
   static const Duration receiveTimeout = Duration(seconds: 15);
 }

@@ -8,12 +8,29 @@ import 'package:scoring_app/core/constants/app_constants.dart';
 import 'package:scoring_app/data/local/local_match_data_source.dart';
 import 'package:scoring_app/data/remote/api_client.dart';
 import 'package:scoring_app/data/remote/match_api.dart';
+import 'package:scoring_app/data/remote/sync_api.dart';
 import 'package:scoring_app/data/repositories/match_repository.dart';
 import 'package:scoring_app/domain/enums/cricket_enums.dart';
 import 'package:scoring_app/domain/models/cricket_match.dart';
 import 'package:scoring_app/domain/models/innings.dart';
 import 'package:scoring_app/features/match/providers/live_scoring_controller.dart';
+import 'package:scoring_app/shared/providers/app_providers.dart';
 import 'package:scoring_app/shared/providers/repository_providers.dart';
+
+/// No-op sync so the controller's best-effort live push never hits the network.
+class _FakeSyncApi implements SyncApi {
+  @override
+  Future<Map<String, dynamic>> push(
+    String deviceId,
+    List<Map<String, dynamic>> matches,
+    List<Map<String, dynamic>> tournaments,
+  ) async =>
+      const {};
+
+  @override
+  Future<PulledDocs> pull(String deviceId) async =>
+      (matches: const [], tournaments: const []);
+}
 
 void main() {
   late Directory tempDir;
@@ -45,7 +62,11 @@ void main() {
   ({LiveScoringController controller, ProviderContainer container}) buildReady({int overs = 20}) {
     repo.saveMatch(newMatch(overs: overs));
     final container = ProviderContainer(
-      overrides: [matchRepositoryProvider.overrideWithValue(repo)],
+      overrides: [
+        matchRepositoryProvider.overrideWithValue(repo),
+        syncApiProvider.overrideWithValue(_FakeSyncApi()),
+        deviceIdProvider.overrideWithValue('test-device'),
+      ],
     );
     final controller = container.read(liveScoringControllerProvider('m1').notifier);
     controller.setOpeners(striker: 'Striker', nonStriker: 'NonStriker');

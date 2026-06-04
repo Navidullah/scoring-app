@@ -4,6 +4,8 @@ import 'package:hive/hive.dart';
 import '../constants/app_constants.dart';
 import '../../features/onboarding/onboarding_screen.dart';
 import '../../features/home/home_screen.dart';
+import '../../features/live/live_matches_screen.dart';
+import '../../features/live/live_match_view_screen.dart';
 import '../../features/match/match_setup_screen.dart';
 import '../../features/match/live_scoring_screen.dart';
 import '../../features/tournament/tournament_screen.dart';
@@ -23,6 +25,7 @@ class AppRoutes {
   static const String matchSetup = '/match/setup';
   static String matchScore(String id) => '/match/$id/score';
   static const String tournaments = '/tournaments';
+  static const String live = '/live';
   static const String history = '/history';
   static const String leaderboards = '/leaderboards';
   static const String settings = '/settings';
@@ -64,6 +67,15 @@ final appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.tournaments,
       builder: (context, state) => const TournamentScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.live,
+      builder: (context, state) => const LiveMatchesScreen(),
+    ),
+    GoRoute(
+      path: '/live/:id',
+      builder: (context, state) =>
+          LiveMatchViewScreen(matchId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/tournaments/create',
