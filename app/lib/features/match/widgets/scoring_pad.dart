@@ -41,7 +41,7 @@ class ScoringPad extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 18, 14, 12),
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
           child: Column(
             children: [
               // Dot + singles row.
@@ -60,7 +60,7 @@ class ScoringPad extends StatelessWidget {
                     ),
                 ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               // Boundaries.
               Row(
                 children: [
@@ -88,7 +88,7 @@ class ScoringPad extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               // Extras.
               Wrap(
                 spacing: 8,
@@ -101,7 +101,7 @@ class ScoringPad extends StatelessWidget {
                   _ExtraButton(label: 'Leg bye', onTap: enabled ? () => onExtra(ExtraType.legBye) : null),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               Row(
                 children: [
                   Expanded(
@@ -146,7 +146,7 @@ class _RunButton extends StatelessWidget {
     return Opacity(
       opacity: onTap == null ? 0.4 : 1,
       child: Container(
-        height: 64,
+        height: 54,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
           gradient: hasGradient
@@ -228,7 +228,7 @@ class _ExtraButton extends StatelessWidget {
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: AppColors.glassStroke),
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
             child: Text(
               label,
               style: const TextStyle(
@@ -263,7 +263,7 @@ class _ActionButton extends StatelessWidget {
     return Opacity(
       opacity: onTap == null ? 0.4 : 1,
       child: Container(
-        height: 54,
+        height: 48,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           gradient: hasGradient

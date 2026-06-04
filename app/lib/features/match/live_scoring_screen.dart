@@ -74,14 +74,11 @@ class _LiveScoringScreenState extends ConsumerState<LiveScoringScreen> {
                 ScoreboardHeader(match: match),
                 Expanded(
                   child: SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        BattingBowlingPanel(innings: match.currentInnings),
-                        OverTimeline(balls: match.currentInnings.currentOverBalls),
-                      ],
-                    ),
+                    child: BattingBowlingPanel(innings: match.currentInnings),
                   ),
                 ),
+                // Pinned above the pad so the current over is always fully visible.
+                OverTimeline(balls: match.currentInnings.currentOverBalls),
                 if (match.currentInnings.isFreeHit) const _FreeHitBanner(),
                 ScoringPad(
                   enabled: _controller.canScore,

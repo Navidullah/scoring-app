@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/string_utils.dart';
 import '../../domain/enums/cricket_enums.dart';
 import '../../domain/models/cricket_match.dart';
 import '../../domain/models/innings.dart';
@@ -42,8 +43,8 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
 
   void _start() {
     if (!_formKey.currentState!.validate()) return;
-    final t1 = _team1.text.trim();
-    final t2 = _team2.text.trim();
+    final t1 = titleCase(_team1.text);
+    final t2 = titleCase(_team2.text);
     final battingFirst = _team1BatsFirst ? t1 : t2;
     final bowlingFirst = _team1BatsFirst ? t2 : t1;
 
@@ -78,7 +79,8 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+          // Extra bottom inset so the Start button clears the system nav bar.
+          padding: EdgeInsets.fromLTRB(16, 8, 16, 28 + MediaQuery.paddingOf(context).bottom),
           children: [
             const SectionHeader('Teams'),
             GlassCard(

@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/string_utils.dart';
 import '../../domain/enums/cricket_enums.dart';
 import '../../domain/models/tournament.dart';
 import '../../shared/providers/repository_providers.dart';
@@ -66,7 +67,7 @@ class _TournamentCreateScreenState extends ConsumerState<TournamentCreateScreen>
   }
 
   void _create() {
-    final names = _teams.map((t) => t.name.text.trim()).where((n) => n.isNotEmpty).toList();
+    final names = _teams.map((t) => titleCase(t.name.text)).where((n) => n.isNotEmpty).toList();
     if (names.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Add at least 2 teams with names.')),
@@ -83,11 +84,11 @@ class _TournamentCreateScreenState extends ConsumerState<TournamentCreateScreen>
     final teams = _teams
         .where((t) => t.name.text.trim().isNotEmpty)
         .map((t) => TournamentTeam(
-              name: t.name.text.trim(),
+              name: titleCase(t.name.text),
               players: t.players.text
                   .split(',')
-                  .map((p) => p.trim())
-                  .where((p) => p.isNotEmpty)
+                  .where((p) => p.trim().isNotEmpty)
+                  .map((p) => titleCase(p))
                   .toList(),
             ))
         .toList();
@@ -119,7 +120,7 @@ class _TournamentCreateScreenState extends ConsumerState<TournamentCreateScreen>
         ),
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+        padding: EdgeInsets.fromLTRB(16, 8, 16, 28 + MediaQuery.paddingOf(context).bottom),
         children: [
           const SectionHeader('Details'),
           GlassCard(

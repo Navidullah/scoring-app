@@ -4,6 +4,7 @@ import 'package:scoring_app/domain/enums/cricket_enums.dart';
 import 'package:scoring_app/domain/models/ball_event.dart';
 import 'package:scoring_app/domain/models/cricket_match.dart';
 import 'package:scoring_app/domain/models/innings.dart';
+import 'package:scoring_app/core/utils/string_utils.dart';
 
 BallEvent _ball(
   String s,
@@ -77,6 +78,19 @@ void main() {
     expect(ob[0].wickets, 0);
     expect(ob[1].runs, 4);
     expect(ob[1].wickets, 1);
+  });
+
+  group('titleCase', () {
+    test('capitalizes the first letter of each word', () {
+      expect(titleCase('naveed ullah'), 'Naveed Ullah');
+      expect(titleCase('team a'), 'Team A');
+    });
+    test('trims and collapses whitespace', () {
+      expect(titleCase('  taimur   mirza  '), 'Taimur Mirza');
+    });
+    test('leaves existing capitals intact', () {
+      expect(titleCase('MS dhoni'), 'MS Dhoni');
+    });
   });
 
   group('ball type + lbw serialization', () {

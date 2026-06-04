@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/utils/string_utils.dart';
 import '../../../data/repositories/match_repository.dart';
 import '../../../domain/enums/cricket_enums.dart';
 import '../../../domain/models/ball_event.dart';
@@ -44,12 +45,12 @@ class LiveScoringController extends StateNotifier<CricketMatch> {
 
   void setOpeners({required String striker, required String nonStriker}) {
     _commit(state.withCurrentInnings(
-      _inn.copyWith(striker: striker.trim(), nonStriker: nonStriker.trim()),
+      _inn.copyWith(striker: titleCase(striker), nonStriker: titleCase(nonStriker)),
     ));
   }
 
   void setBowler(String name) {
-    _commit(state.withCurrentInnings(_inn.copyWith(bowler: name.trim())));
+    _commit(state.withCurrentInnings(_inn.copyWith(bowler: titleCase(name))));
   }
 
   // --- Scoring --------------------------------------------------------------
@@ -88,9 +89,9 @@ class LiveScoringController extends StateNotifier<CricketMatch> {
       runs: 0,
       wicket: type,
       outBatsman: out,
-      fielder: fielder,
+      fielder: (fielder == null || fielder.trim().isEmpty) ? null : titleCase(fielder),
       ranBetweenWickets: 0,
-      incomingBatsman: newBatsman.trim(),
+      incomingBatsman: titleCase(newBatsman),
       nonStrikerOut: nonStrikerOut,
     );
   }
@@ -100,8 +101,8 @@ class LiveScoringController extends StateNotifier<CricketMatch> {
   /// retired player keeps their figures and may return later under the same name.
   void retire({required bool nonStriker, required String replacement}) {
     if (state.isComplete || _inn.isComplete) return;
-    final name = replacement.trim();
-    if (name.isEmpty) return;
+    if (replacement.trim().isEmpty) return;
+    final name = titleCase(replacement);
     _commit(state.withCurrentInnings(
       nonStriker ? _inn.copyWith(nonStriker: name) : _inn.copyWith(striker: name),
     ));
