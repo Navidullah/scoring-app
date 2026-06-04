@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_colors.dart';
+import '../../../shared/widgets/glass_card.dart';
 import '../services/points_table.dart';
 
 /// Renders the league standings table.
@@ -10,53 +12,90 @@ class PointsTableView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final s = Theme.of(context).textTheme.labelSmall;
-    return Card(
-      margin: const EdgeInsets.all(12),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Points Table', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(flex: 4, child: Text('Team', style: s)),
-                Expanded(child: Text('P', style: s, textAlign: TextAlign.end)),
-                Expanded(child: Text('W', style: s, textAlign: TextAlign.end)),
-                Expanded(child: Text('L', style: s, textAlign: TextAlign.end)),
-                Expanded(child: Text('T', style: s, textAlign: TextAlign.end)),
-                Expanded(child: Text('Pts', style: s, textAlign: TextAlign.end)),
-                Expanded(flex: 2, child: Text('NRR', style: s, textAlign: TextAlign.end)),
-              ],
-            ),
-            const Divider(height: 12),
-            ...standings.map((st) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 3),
-                  child: Row(
-                    children: [
-                      Expanded(flex: 4, child: Text(st.team)),
-                      Expanded(child: Text('${st.played}', textAlign: TextAlign.end)),
-                      Expanded(child: Text('${st.won}', textAlign: TextAlign.end)),
-                      Expanded(child: Text('${st.lost}', textAlign: TextAlign.end)),
-                      Expanded(child: Text('${st.tied}', textAlign: TextAlign.end)),
-                      Expanded(
-                        child: Text('${st.points}',
-                            textAlign: TextAlign.end,
-                            style: const TextStyle(fontWeight: FontWeight.bold)),
+    final theme = Theme.of(context);
+    final labelStyle = theme.textTheme.labelSmall;
+    return GlassCard(
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.table_chart_rounded, size: 18, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Text('Points Table', style: theme.textTheme.titleMedium),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const SizedBox(width: 22),
+              Expanded(flex: 4, child: Text('TEAM', style: labelStyle)),
+              Expanded(child: Text('P', style: labelStyle, textAlign: TextAlign.end)),
+              Expanded(child: Text('W', style: labelStyle, textAlign: TextAlign.end)),
+              Expanded(child: Text('L', style: labelStyle, textAlign: TextAlign.end)),
+              Expanded(child: Text('T', style: labelStyle, textAlign: TextAlign.end)),
+              Expanded(child: Text('PTS', style: labelStyle, textAlign: TextAlign.end)),
+              Expanded(flex: 2, child: Text('NRR', style: labelStyle, textAlign: TextAlign.end)),
+            ],
+          ),
+          const Divider(height: 16),
+          for (var i = 0; i < standings.length; i++)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 5),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 22,
+                    child: Text(
+                      '${i + 1}',
+                      style: TextStyle(
+                        color: i < 2 ? AppColors.primary : context.txLow,
+                        fontWeight: FontWeight.w800,
                       ),
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          (st.nrr >= 0 ? '+' : '') + st.nrr.toStringAsFixed(2),
-                          textAlign: TextAlign.end,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                )),
-          ],
+                  Expanded(
+                    flex: 4,
+                    child: Text(
+                      standings[i].team,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontWeight: FontWeight.w600, color: context.txHi),
+                    ),
+                  ),
+                  _cell(context, '${standings[i].played}'),
+                  _cell(context, '${standings[i].won}'),
+                  _cell(context, '${standings[i].lost}'),
+                  _cell(context, '${standings[i].tied}'),
+                  _cell(context, '${standings[i].points}', bold: true, color: AppColors.primary),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      (standings[i].nrr >= 0 ? '+' : '') + standings[i].nrr.toStringAsFixed(2),
+                      textAlign: TextAlign.end,
+                      style: TextStyle(
+                        color: standings[i].nrr >= 0 ? AppColors.primary : AppColors.wicket,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _cell(BuildContext context, String v, {bool bold = false, Color? color}) {
+    return Expanded(
+      child: Text(
+        v,
+        textAlign: TextAlign.end,
+        style: TextStyle(
+          color: color ?? context.txHi,
+          fontWeight: bold ? FontWeight.w800 : FontWeight.w500,
         ),
       ),
     );

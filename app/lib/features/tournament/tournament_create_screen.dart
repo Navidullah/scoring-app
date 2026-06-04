@@ -4,9 +4,13 @@ import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/theme/app_colors.dart';
 import '../../domain/enums/cricket_enums.dart';
 import '../../domain/models/tournament.dart';
 import '../../shared/providers/repository_providers.dart';
+import '../../shared/widgets/glass_card.dart';
+import '../../shared/widgets/gradient_button.dart';
+import '../../shared/widgets/ui_widgets.dart';
 import 'providers/tournament_providers.dart';
 import 'services/fixture_generator.dart';
 
@@ -100,7 +104,8 @@ class _TournamentCreateScreenState extends ConsumerState<TournamentCreateScreen>
 
     ref.read(tournamentRepositoryProvider).save(tournament);
     ref.invalidate(tournamentListProvider);
-    context.go('/tournaments/${tournament.id}');
+    // Replace the create screen so Back from the detail returns to the list.
+    context.pushReplacement('/tournaments/${tournament.id}');
   }
 
   @override
@@ -110,47 +115,66 @@ class _TournamentCreateScreenState extends ConsumerState<TournamentCreateScreen>
         title: const Text('New Tournament'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/tournaments'),
+          onPressed: () => context.canPop() ? context.pop() : context.go('/tournaments'),
         ),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
         children: [
-          TextField(
-            controller: _name,
-            decoration: const InputDecoration(labelText: 'Tournament name', border: OutlineInputBorder()),
+          const SectionHeader('Details'),
+          GlassCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: _name,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(
+                    labelText: 'Tournament name',
+                    prefixIcon: Icon(Icons.emoji_events_rounded, color: AppColors.accent),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text('Format', style: Theme.of(context).textTheme.titleSmall),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<TournamentFormat>(
+                    segments: const [
+                      ButtonSegment(value: TournamentFormat.roundRobin, label: Text('Round-robin')),
+                      ButtonSegment(value: TournamentFormat.knockout, label: Text('Knockout')),
+                    ],
+                    selected: {_format},
+                    onSelectionChanged: (s) => setState(() => _format = s.first),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                DropdownButtonFormField<int>(
+                  initialValue: _overs,
+                  decoration: const InputDecoration(
+                    labelText: 'Overs per match',
+                    prefixIcon: Icon(Icons.timer_outlined, color: AppColors.primary),
+                  ),
+                  items: _overOptions.map((o) => DropdownMenuItem(value: o, child: Text('$o overs'))).toList(),
+                  onChanged: (v) => setState(() => _overs = v ?? _overs),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 16),
-          Text('Format', style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: 8),
-          SegmentedButton<TournamentFormat>(
-            segments: const [
-              ButtonSegment(value: TournamentFormat.roundRobin, label: Text('Round-robin')),
-              ButtonSegment(value: TournamentFormat.knockout, label: Text('Knockout')),
-            ],
-            selected: {_format},
-            onSelectionChanged: (s) => setState(() => _format = s.first),
+          const SizedBox(height: 22),
+          SectionHeader(
+            'Teams',
+            trailing: TextButton.icon(
+              onPressed: _addTeam,
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: const Text('Add team'),
+            ),
           ),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<int>(
-            initialValue: _overs,
-            decoration: const InputDecoration(labelText: 'Overs per match', border: OutlineInputBorder()),
-            items: _overOptions.map((o) => DropdownMenuItem(value: o, child: Text('$o overs'))).toList(),
-            onChanged: (v) => setState(() => _overs = v ?? _overs),
-          ),
-          const SizedBox(height: 24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Teams', style: Theme.of(context).textTheme.titleMedium),
-              TextButton.icon(onPressed: _addTeam, icon: const Icon(Icons.add), label: const Text('Add team')),
-            ],
-          ),
-          const SizedBox(height: 8),
           for (var i = 0; i < _teams.length; i++)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: GlassCard(
+                padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
                 child: Column(
                   children: [
                     Row(
@@ -158,16 +182,18 @@ class _TournamentCreateScreenState extends ConsumerState<TournamentCreateScreen>
                         Expanded(
                           child: TextField(
                             controller: _teams[i].name,
+                            textCapitalization: TextCapitalization.words,
                             decoration: InputDecoration(labelText: 'Team ${i + 1} name'),
                           ),
                         ),
                         if (_teams.length > 2)
                           IconButton(
-                            icon: const Icon(Icons.close),
+                            icon: Icon(Icons.close_rounded, color: context.txLow),
                             onPressed: () => _removeTeam(i),
                           ),
                       ],
                     ),
+                    const SizedBox(height: 12),
                     TextField(
                       controller: _teams[i].players,
                       decoration: const InputDecoration(
@@ -178,11 +204,11 @@ class _TournamentCreateScreenState extends ConsumerState<TournamentCreateScreen>
                 ),
               ),
             ),
-          const SizedBox(height: 24),
-          FilledButton.icon(
+          const SizedBox(height: 20),
+          GradientButton(
+            label: 'Create Tournament',
+            icon: Icons.check_rounded,
             onPressed: _create,
-            icon: const Icon(Icons.check),
-            label: const Text('Create tournament'),
           ),
         ],
       ),

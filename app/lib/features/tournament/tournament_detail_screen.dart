@@ -9,6 +9,9 @@ import '../../domain/models/cricket_match.dart';
 import '../../domain/models/innings.dart';
 import '../../domain/models/tournament.dart';
 import '../../shared/providers/repository_providers.dart';
+import '../../shared/widgets/glass_card.dart';
+import '../../shared/widgets/gradient_button.dart';
+import '../../shared/widgets/ui_widgets.dart';
 import 'providers/tournament_providers.dart';
 import 'services/fixture_generator.dart';
 import 'services/points_table.dart';
@@ -42,18 +45,16 @@ class TournamentDetailScreen extends ConsumerWidget {
         title: Text(tournament.name),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/tournaments'),
+          onPressed: () => context.canPop() ? context.pop() : context.go('/tournaments'),
         ),
       ),
       body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
         children: [
           for (final round in rounds) ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-              child: Text(
-                isKnockout ? _roundName(round, rounds.length, tournament) : 'Fixtures',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
+            SectionHeader(
+              isKnockout ? _roundName(round, rounds.length, tournament) : 'Fixtures',
+              padding: const EdgeInsets.fromLTRB(4, 12, 4, 10),
             ),
             ...tournament.fixtures.where((f) => f.round == round).map(
                   (f) => _FixtureTile(
@@ -86,7 +87,7 @@ class TournamentDetailScreen extends ConsumerWidget {
     if (f.matchId != null) {
       final m = matchRepo.getMatch(f.matchId!);
       if (m != null) {
-        context.go(m.isComplete ? '/match/${m.id}/scorecard' : '/match/${m.id}/score');
+        context.push(m.isComplete ? '/match/${m.id}/scorecard' : '/match/${m.id}/score');
         return;
       }
     }
@@ -109,7 +110,7 @@ class TournamentDetailScreen extends ConsumerWidget {
     ref.read(tournamentRepositoryProvider).save(t.copyWith(fixtures: fixtures));
     ref.invalidate(tournamentProvider(t.id));
 
-    context.go('/match/${match.id}/score');
+    context.push('/match/${match.id}/score');
   }
 
   Widget _knockoutFooter(
@@ -136,17 +137,28 @@ class TournamentDetailScreen extends ConsumerWidget {
     }
 
     if (allDecided && winners.length == 1) {
-      return Card(
-        margin: const EdgeInsets.all(16),
-        color: AppColors.scoreboard,
-        child: Padding(
-          padding: const EdgeInsets.all(20),
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+        child: GlassCard(
+          strong: true,
+          glowColor: AppColors.accent,
+          padding: const EdgeInsets.all(24),
           child: Column(
             children: [
-              const Icon(Icons.emoji_events, color: AppColors.accent, size: 40),
-              const SizedBox(height: 8),
-              Text('Champion: ${winners.first}',
-                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              const NeonIconBadge(
+                icon: Icons.emoji_events_rounded,
+                gradient: AppColors.trophy,
+                size: 72,
+                iconSize: 38,
+              ),
+              const SizedBox(height: 14),
+              Text('CHAMPION',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: AppColors.accent, letterSpacing: 2)),
+              const SizedBox(height: 6),
+              Text(winners.first,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.headlineSmall),
             ],
           ),
         ),
@@ -154,21 +166,25 @@ class TournamentDetailScreen extends ConsumerWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.all(16),
-      child: FilledButton.icon(
-        onPressed: allDecided
-            ? () {
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: allDecided
+          ? GradientButton(
+              label: 'Generate next round',
+              icon: Icons.skip_next_rounded,
+              onPressed: () {
                 final next = generateNextKnockoutRound(round, winners);
                 if (next.isEmpty) return;
                 ref.read(tournamentRepositoryProvider).save(
                       t.copyWith(fixtures: [...t.fixtures, ...next]),
                     );
                 ref.invalidate(tournamentProvider(t.id));
-              }
-            : null,
-        icon: const Icon(Icons.skip_next),
-        label: Text(allDecided ? 'Generate next round' : 'Finish all matches to advance'),
-      ),
+              },
+            )
+          : OutlinedButton.icon(
+              onPressed: null,
+              icon: const Icon(Icons.hourglass_empty_rounded),
+              label: const Text('Finish all matches to advance'),
+            ),
     );
   }
 }
@@ -185,34 +201,61 @@ class _FixtureTile extends StatelessWidget {
     final theme = Theme.of(context);
     String status;
     IconData icon;
+    List<Color> gradient;
+    Color statusColor;
     if (fixture.isBye) {
       final advancing = fixture.teamA == Fixture.byeMarker ? fixture.teamB : fixture.teamA;
       status = '$advancing advances (bye)';
-      icon = Icons.fast_forward;
+      icon = Icons.fast_forward_rounded;
+      gradient = const [Color(0xFF64748B), Color(0xFF475569)];
+      statusColor = context.txLow;
     } else if (match == null) {
       status = 'Not played — tap to start';
-      icon = Icons.play_circle_outline;
+      icon = Icons.play_circle_outline_rounded;
+      gradient = AppColors.brand;
+      statusColor = AppColors.primary;
     } else if (!match!.isComplete) {
       status = 'In progress — tap to resume';
-      icon = Icons.play_circle_fill;
+      icon = Icons.play_circle_fill_rounded;
+      gradient = AppColors.brand;
+      statusColor = AppColors.primary;
     } else {
       final w = match!.winnerTeam;
       status = w == null ? 'Match tied' : '$w won';
-      icon = Icons.emoji_events;
+      icon = Icons.emoji_events_rounded;
+      gradient = AppColors.trophy;
+      statusColor = AppColors.accent;
     }
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      child: ListTile(
-        leading: Icon(icon),
-        title: Text(
-          fixture.isBye
-              ? (fixture.teamA == Fixture.byeMarker ? fixture.teamB : fixture.teamA)
-              : '${fixture.teamA}  vs  ${fixture.teamB}',
-        ),
-        subtitle: Text(status, style: theme.textTheme.bodySmall),
-        trailing: fixture.isBye ? null : const Icon(Icons.chevron_right),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: GlassCard(
+        padding: const EdgeInsets.all(14),
         onTap: fixture.isBye ? null : onTap,
+        child: Row(
+          children: [
+            NeonIconBadge(icon: icon, gradient: gradient, size: 42, iconSize: 21),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    fixture.isBye
+                        ? (fixture.teamA == Fixture.byeMarker ? fixture.teamB : fixture.teamA)
+                        : '${fixture.teamA}  vs  ${fixture.teamB}',
+                    style: theme.textTheme.titleMedium,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(status, style: theme.textTheme.bodySmall?.copyWith(color: statusColor)),
+                ],
+              ),
+            ),
+            if (!fixture.isBye)
+              Icon(Icons.chevron_right_rounded, color: context.txLow),
+          ],
+        ),
       ),
     );
   }

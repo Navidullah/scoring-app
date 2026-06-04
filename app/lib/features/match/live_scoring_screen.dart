@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/theme/app_colors.dart';
 import '../../domain/enums/cricket_enums.dart';
+import '../../shared/widgets/glass_card.dart';
+import '../../shared/widgets/gradient_button.dart';
+import '../../shared/widgets/ui_widgets.dart';
 import 'providers/live_scoring_controller.dart';
 import 'widgets/batting_bowling_panel.dart';
 import 'widgets/over_timeline.dart';
@@ -116,34 +120,54 @@ class _ResultView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.emoji_events, size: 80, color: Theme.of(context).colorScheme.secondary),
-          const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
-              resultText,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: GlassCard(
+          strong: true,
+          glowColor: AppColors.accent,
+          padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const NeonIconBadge(
+                icon: Icons.emoji_events_rounded,
+                gradient: AppColors.trophy,
+                size: 88,
+                iconSize: 46,
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Match Complete',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: AppColors.accent,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                resultText,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 28),
+              GradientButton(
+                label: 'View Scorecard',
+                icon: Icons.assignment_rounded,
+                onPressed: () => context.push('/match/$matchId/scorecard'),
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: () => context.pushReplacement('/match/setup'),
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('New match'),
+              ),
+              const SizedBox(height: 4),
+              TextButton(onPressed: () => context.go('/'), child: const Text('Back to Home')),
+            ],
           ),
-          const SizedBox(height: 24),
-          FilledButton.icon(
-            onPressed: () => context.go('/match/$matchId/scorecard'),
-            icon: const Icon(Icons.assignment),
-            label: const Text('View scorecard'),
-          ),
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: () => context.go('/match/setup'),
-            icon: const Icon(Icons.add),
-            label: const Text('New match'),
-          ),
-          TextButton(onPressed: () => context.go('/'), child: const Text('Home')),
-        ],
+        ),
       ),
     );
   }

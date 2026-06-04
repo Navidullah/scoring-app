@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../../domain/models/innings.dart';
+import '../../../shared/widgets/glass_card.dart';
+import '../../../shared/widgets/ui_widgets.dart';
 import '../scorecard_format.dart';
 
 /// Full batting + bowling card for a single innings.
@@ -15,29 +18,34 @@ class InningsScorecard extends StatelessWidget {
     final batsmen = innings.batsmenInOrder;
     final bowlers = innings.bowlersUsed;
 
-    return Card(
-      margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    innings.battingTeam,
-                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                  ),
+    return GlassCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  innings.battingTeam,
+                  style: theme.textTheme.titleLarge,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                Text(
-                  '${innings.runs}/${innings.wickets}  (${innings.oversText} ov)',
-                  style: theme.textTheme.titleMedium,
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
+              ),
+              GradientText(
+                '${innings.runs}/${innings.wickets}',
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(width: 6),
+              Padding(
+                padding: const EdgeInsets.only(top: 3),
+                child: Text('(${innings.oversText})',
+                    style: theme.textTheme.bodySmall?.copyWith(color: context.txLow)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
             // Batting
             _batHeader(theme),
             const Divider(height: 12),
@@ -67,8 +75,7 @@ class InningsScorecard extends StatelessWidget {
             ...bowlers.map((b) => _bowlRow(context, b)),
           ],
         ),
-      ),
-    );
+      );
   }
 
   Widget _batHeader(ThemeData theme) {
