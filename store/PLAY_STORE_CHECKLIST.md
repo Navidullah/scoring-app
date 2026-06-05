@@ -30,7 +30,7 @@ only you can do (console clicks, account); the rest is prepared in this repo.
 
 ### Graphics
 - [x] **App icon 512×512:** `store/icon_512.png`
-- [ ] **Feature graphic 1024×500:** `store/feature_graphic_1024x500.png` — **NEEDS REBRAND to "CricLive"** (current one says the old name). Easiest: recreate in Canva with the neon icon + "CricLive" + tagline "Score • Share Live • Tournaments". *(I can't generate the image file; you or a designer make this.)*
+- [x] **Feature graphic 1024×500:** `store/feature_graphic_1024x500.png` — **REBRANDED to "CricLive"** (neon icon + "CricLive" wordmark + tagline "Score • Share Live • Tournaments" on the dark design-system background). Regenerate anytime with `python store/make_feature_graphic.py`.
 - [x] **Phone screenshots (10):** `store/play_screens/01..10` — pick at least 4 (Play allows up to 8). Recommended order:
       1. `03_live_scoring` (ball-by-ball)
       2. `04_live_matches` (LIVE feed — your differentiator)
@@ -87,4 +87,4 @@ only you can do (console clicks, account); the rest is prepared in this repo.
 
 ### Quick status
 ✅ Prepared by me: app build/signing, name, screenshots, listing copy, privacy policy (rebranded + live disclosure), this checklist + data-safety answers.
-🔲 Needs you: $25 registration, enable GitHub Pages, rebrand the feature graphic, then paste listing + upload AAB/screenshots + fill the forms in Play Console.
+🔲 Needs you: paste listing + upload AAB/screenshots/feature-graphic + fill the forms in Play Console. (Account registration ✅ verified; feature graphic ✅ rebranded.)
