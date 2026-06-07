@@ -43,6 +43,13 @@ class HomeScreen extends StatelessWidget {
                   route: AppRoutes.tournaments,
                 ),
                 _FeatureTile(
+                  label: AppStrings.results,
+                  subtitle: 'Finished matches from everyone',
+                  icon: Icons.scoreboard_rounded,
+                  gradient: AppColors.amber,
+                  route: AppRoutes.results,
+                ),
+                _FeatureTile(
                   label: AppStrings.history,
                   subtitle: 'Past scorecards',
                   icon: Icons.history_rounded,

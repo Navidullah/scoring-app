@@ -7,6 +7,12 @@ async function list(req, res) {
   ok(res, matches);
 }
 
+// GET /api/results — list of finished matches from the last 24h (public).
+async function results(req, res) {
+  const matches = await service.listResults();
+  ok(res, matches);
+}
+
 // GET /api/live/:id — full snapshot of a single match (public, read-only).
 async function get(req, res) {
   const result = await service.getMatch(req.params.id);
@@ -14,4 +20,4 @@ async function get(req, res) {
   ok(res, result.match);
 }
 
-module.exports = { list, get };
+module.exports = { list, results, get };

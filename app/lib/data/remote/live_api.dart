@@ -13,6 +13,13 @@ class LiveApi {
     return data.map((e) => (e as Map).cast<String, dynamic>()).toList();
   }
 
+  /// Summaries of finished matches across all devices (last 24h).
+  Future<List<Map<String, dynamic>>> results() async {
+    final res = await _client.get('/results');
+    final data = (res.data['data'] as List<dynamic>?) ?? const [];
+    return data.map((e) => (e as Map).cast<String, dynamic>()).toList();
+  }
+
   /// Full snapshot (CricketMatch JSON) for a single match, or null if missing.
   Future<Map<String, dynamic>?> getMatch(String id) async {
     try {

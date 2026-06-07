@@ -7,6 +7,7 @@ const matchRoutes = require('./routes/match.routes');
 const teamRoutes = require('./routes/team.routes');
 const syncRoutes = require('./routes/sync.routes');
 const liveRoutes = require('./routes/live.routes');
+const resultsRoutes = require('./routes/results.routes');
 const { matchPageHtml } = require('./web/matchPage');
 const { errorHandler, notFound } = require('./middleware/error');
 
@@ -25,6 +26,7 @@ app.use('/api/matches', matchRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/live', liveRoutes);
+app.use('/api/results', resultsRoutes);
 
 // Public live scoreboard web page — shareable link, viewable in any browser.
 app.get('/m/:id', (req, res) => res.type('html').send(matchPageHtml(req.params.id)));

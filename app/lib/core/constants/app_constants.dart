@@ -6,6 +6,7 @@ class AppStrings {
   static const String homeTitle = 'CricLive';
   static const String newMatch = 'New Match';
   static const String tournaments = 'Tournaments';
+  static const String results = 'Results';
   static const String history = 'History';
   static const String leaderboards = 'Leaderboards';
   static const String settings = 'Settings';

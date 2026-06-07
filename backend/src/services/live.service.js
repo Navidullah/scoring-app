@@ -3,6 +3,9 @@ const prisma = require('../utils/prisma');
 // Only surface matches that have been updated recently as "live".
 const LIVE_WINDOW_MS = 6 * 60 * 60 * 1000; // 6 hours
 
+// Finished matches drop off the public Results list 24h after their last update.
+const RESULTS_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
+
 // --- Score helpers (mirror the Flutter model so summaries match the app) -----
 function isLegal(b) {
   return b.extraType !== 'wide' && b.extraType !== 'noBall';
@@ -60,6 +63,21 @@ async function listLive() {
   return docs.map((d) => summarize(d.payload, d.updatedAt));
 }
 
+// Finished matches across all devices, most recent first. Auto-expires from the
+// list 24h after the match's last update (the snapshot itself is kept in the DB).
+async function listResults() {
+  const docs = await prisma.syncDocument.findMany({
+    where: {
+      type: 'match',
+      payload: { path: ['status'], equals: 'completed' },
+      updatedAt: { gte: new Date(Date.now() - RESULTS_WINDOW_MS) },
+    },
+    orderBy: { updatedAt: 'desc' },
+    take: 50,
+  });
+  return docs.map((d) => summarize(d.payload, d.updatedAt));
+}
+
 // The full match snapshot for a single match (live or finished), for viewing.
 async function getMatch(matchId) {
   const doc = await prisma.syncDocument.findFirst({
@@ -70,4 +88,4 @@ async function getMatch(matchId) {
   return { match: doc.payload, updatedAt: doc.updatedAt };
 }
 
-module.exports = { listLive, getMatch, summarize, inningsScore };
+module.exports = { listLive, listResults, getMatch, summarize, inningsScore };

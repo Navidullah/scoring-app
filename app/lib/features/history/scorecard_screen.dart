@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../domain/enums/cricket_enums.dart';
+import '../../domain/models/cricket_match.dart';
 import '../../shared/providers/repository_providers.dart';
 import '../../shared/widgets/glass_card.dart';
 import '../../shared/widgets/ui_widgets.dart';
@@ -13,14 +14,22 @@ import 'services/share_image.dart';
 import 'widgets/innings_scorecard.dart';
 
 /// Full scorecard for a match: result banner + a card per innings.
+///
+/// Pass [matchId] to load a locally-stored match (History), or pass an in-memory
+/// [match] to render a snapshot fetched from the cloud (Results). Exactly one
+/// should be provided.
 class ScorecardScreen extends ConsumerWidget {
-  const ScorecardScreen({super.key, required this.matchId});
+  const ScorecardScreen({super.key, this.matchId, this.match})
+      : assert(matchId != null || match != null,
+            'Provide either a matchId or a match');
 
-  final String matchId;
+  final String? matchId;
+  final CricketMatch? match;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final match = ref.watch(matchRepositoryProvider).getMatch(matchId);
+    final match =
+        this.match ?? ref.watch(matchRepositoryProvider).getMatch(matchId!);
 
     return Scaffold(
       appBar: AppBar(
