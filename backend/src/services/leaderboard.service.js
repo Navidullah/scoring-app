@@ -5,6 +5,24 @@ function isBowlerWicket(b) {
   return b.wicket && b.wicket !== 'runOut' && b.wicket !== 'retired';
 }
 
+const VOWEL = /[aeiou]/i;
+// "Real" consonants — excludes y so vowel-only mashes like "yuiui" are caught.
+const CONSONANT = /[bcdfghjklmnpqrstvwxz]/i;
+const TRIPLE_RUN = /(.)\1\1/; // 3+ of the same letter in a row
+
+// Conservative heuristic to keep keyboard-mash / placeholder names (sdsds,
+// fdfdfdf, xyz, iooopo, …) off the PUBLIC global board. Designed for very low
+// false positives: a real name almost always has both a vowel and a consonant
+// and no letter repeated three times running. Real data is never modified.
+function isPlausibleName(name) {
+  const letters = (name || '').replace(/[^a-z]/gi, '');
+  if (letters.length < 2) return false;
+  if (!VOWEL.test(letters)) return false;
+  if (!CONSONANT.test(letters)) return false;
+  if (TRIPLE_RUN.test(letters.toLowerCase())) return false;
+  return true;
+}
+
 // Aggregates top run-scorers and wicket-takers across every device's synced
 // matches. Matches are stored as JSON snapshots (SyncDocument), so we parse them
 // here rather than query columns. De-duplicated by match id (a match can be
@@ -48,7 +66,7 @@ async function globalLeaderboard(limit = 50) {
   const toList = (map) =>
     [...map.values()]
       .map((e) => ({ name: e.name, value: e.value, matches: e.matches.size }))
-      .filter((e) => e.value > 0)
+      .filter((e) => e.value > 0 && isPlausibleName(e.name))
       .sort((a, b) => b.value - a.value)
       .slice(0, limit);
 
