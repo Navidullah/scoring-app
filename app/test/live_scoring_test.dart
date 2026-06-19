@@ -40,27 +40,31 @@ void main() {
     tempDir = await Directory.systemTemp.createTemp('scoring_hive_test');
     Hive.init(tempDir.path);
     await Hive.openBox<String>(HiveBoxes.matches);
+    await Hive.openBox<String>(HiveBoxes.players);
     repo = MatchRepository(local: LocalMatchDataSource(), remote: MatchApi(ApiClient()));
   });
 
   tearDown(() async {
     await Hive.deleteBoxFromDisk(HiveBoxes.matches);
+    await Hive.deleteBoxFromDisk(HiveBoxes.players);
     await Hive.close();
     await tempDir.delete(recursive: true);
   });
 
-  CricketMatch newMatch({int overs = 20}) => CricketMatch(
+  CricketMatch newMatch({int overs = 20, int playersPerSide = 11}) => CricketMatch(
         id: 'm1',
         team1: 'A',
         team2: 'B',
         overs: overs,
         battingFirst: 'A',
         createdAt: DateTime(2026),
+        playersPerSide: playersPerSide,
         innings: const [Innings(battingTeam: 'A', bowlingTeam: 'B')],
       );
 
-  ({LiveScoringController controller, ProviderContainer container}) buildReady({int overs = 20}) {
-    repo.saveMatch(newMatch(overs: overs));
+  ({LiveScoringController controller, ProviderContainer container}) buildReady(
+      {int overs = 20, int playersPerSide = 11}) {
+    repo.saveMatch(newMatch(overs: overs, playersPerSide: playersPerSide));
     final container = ProviderContainer(
       overrides: [
         matchRepositoryProvider.overrideWithValue(repo),
@@ -222,5 +226,68 @@ void main() {
     controller.undo();
     expect(read(container).currentInnings.runs, 4);
     expect(read(container).currentInnings.balls.length, 1);
+  });
+
+  test('no-ball off the bat: +1 penalty plus bat runs to the striker', () {
+    final (:controller, :container) = buildReady();
+    addTearDown(container.dispose);
+
+    controller.scoreNoBall(batRuns: 4);
+    final inn = read(container).currentInnings;
+
+    expect(inn.runs, 5); // 4 off the bat + 1 no-ball penalty
+    expect(inn.legalBalls, 0); // not a legal delivery
+    expect(inn.extras, 1); // only the penalty is an extra
+    expect(inn.batStat('Striker').runs, 4);
+    expect(inn.batStat('Striker').fours, 1);
+    expect(inn.bowlStat('Bowler').runsConceded, 5);
+    expect(inn.striker, 'Striker'); // even bat runs → strike retained
+  });
+
+  test('no-ball off the bat rotates strike on odd bat runs', () {
+    final (:controller, :container) = buildReady();
+    addTearDown(container.dispose);
+
+    controller.scoreNoBall(batRuns: 1);
+    final inn = read(container).currentInnings;
+
+    expect(inn.runs, 2); // 1 + penalty
+    expect(inn.striker, 'NonStriker'); // rotated on the single
+  });
+
+  test('squad size ends the innings at playersPerSide - 1 wickets', () {
+    final (:controller, :container) = buildReady(playersPerSide: 3);
+    addTearDown(container.dispose);
+
+    // 3 a side → all out at 2 wickets.
+    controller.scoreWicket(WicketType.bowled, newBatsman: 'Third');
+    expect(read(container).isComplete, isFalse);
+    expect(controller.isFinalWicket, isTrue); // the next wicket is the last
+
+    controller.scoreWicket(WicketType.bowled, newBatsman: '');
+    final match = read(container);
+    expect(match.innings.first.wickets, 2); // all out at 2 down
+    expect(match.innings.first.isComplete, isTrue);
+    expect(match.isSecondInnings, isTrue); // chase begins
+  });
+
+  test('rewind to a ball removes it and everything after, restoring state', () {
+    final (:controller, :container) = buildReady();
+    addTearDown(container.dispose);
+
+    controller.scoreRuns(2); // ball 1: Striker faces, even → keeps strike
+    final firstBallId = read(container).currentInnings.balls.first.id;
+    controller.scoreRuns(1); // ball 2: rotates
+    controller.scoreRuns(4); // ball 3
+
+    expect(read(container).currentInnings.balls.length, 3);
+
+    controller.rewindToBall(firstBallId);
+    final inn = read(container).currentInnings;
+
+    expect(inn.balls, isEmpty); // ball 1 and everything after removed
+    expect(inn.striker, 'Striker'); // restored to pre-ball-1 state
+    expect(inn.nonStriker, 'NonStriker');
+    expect(inn.bowler, 'Bowler');
   });
 }

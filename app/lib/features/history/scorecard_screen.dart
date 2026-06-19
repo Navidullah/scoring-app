@@ -96,9 +96,18 @@ class ScorecardScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${match.ballType == BallType.tennis ? 'Tennis' : 'Leather'} ball  ·  ${match.overs} overs',
+                        '${match.ballType == BallType.tennis ? 'Tennis' : 'Leather'} ball  ·  ${match.overs} overs'
+                        '${match.playersPerSide != 11 ? '  ·  ${match.playersPerSide} a side' : ''}',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(color: context.txLow),
                       ),
+                      if (match.tossText != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          match.tossText!,
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: context.txLow),
+                        ),
+                      ],
                       const SizedBox(height: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
@@ -155,7 +164,13 @@ class ScorecardScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
                 for (final inn in match.innings) ...[
-                  InningsScorecard(innings: inn),
+                  InningsScorecard(
+                    innings: inn,
+                    // Only locally-stored matches have career stats to show.
+                    onTapPlayer: matchId == null
+                        ? null
+                        : (name) => context.push('/player/${Uri.encodeComponent(name)}'),
+                  ),
                   const SizedBox(height: 12),
                 ],
               ],

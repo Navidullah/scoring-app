@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
@@ -32,10 +33,11 @@ class _TeamInput {
 class _TournamentCreateScreenState extends ConsumerState<TournamentCreateScreen> {
   final _name = TextEditingController(text: 'My Tournament');
   TournamentFormat _format = TournamentFormat.roundRobin;
-  int _overs = AppConstants.defaultOvers;
+  final _overs = TextEditingController(text: '${AppConstants.defaultOvers}');
   final _teams = <_TeamInput>[];
 
-  static const _overOptions = [5, 6, 8, 10, 15, 20, 50];
+  static const _overPresets = [5, 6, 8, 10, 15, 20, 50];
+  static const _maxOvers = 100;
 
   @override
   void initState() {
@@ -47,6 +49,7 @@ class _TournamentCreateScreenState extends ConsumerState<TournamentCreateScreen>
   @override
   void dispose() {
     _name.dispose();
+    _overs.dispose();
     for (final t in _teams) {
       t.name.dispose();
       t.players.dispose();
@@ -80,6 +83,13 @@ class _TournamentCreateScreenState extends ConsumerState<TournamentCreateScreen>
       );
       return;
     }
+    final overs = int.tryParse(_overs.text.trim());
+    if (overs == null || overs < 1 || overs > _maxOvers) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Enter a valid number of overs (1–$_maxOvers).')),
+      );
+      return;
+    }
 
     final teams = _teams
         .where((t) => t.name.text.trim().isNotEmpty)
@@ -97,11 +107,17 @@ class _TournamentCreateScreenState extends ConsumerState<TournamentCreateScreen>
       id: const Uuid().v4(),
       name: _name.text.trim().isEmpty ? 'Tournament' : _name.text.trim(),
       format: _format,
-      overs: _overs,
+      overs: overs,
       teams: teams,
       fixtures: generateInitialFixtures(_format, teams.map((t) => t.name).toList()),
       createdAt: DateTime.now(),
     );
+
+    // Remember each squad so the players autocomplete during live scoring.
+    final store = ref.read(playerStoreProvider);
+    for (final t in teams) {
+      store.recordSquad(t.name, t.players);
+    }
 
     ref.read(tournamentRepositoryProvider).save(tournament);
     ref.invalidate(tournamentListProvider);
@@ -150,14 +166,26 @@ class _TournamentCreateScreenState extends ConsumerState<TournamentCreateScreen>
                   ),
                 ),
                 const SizedBox(height: 18),
-                DropdownButtonFormField<int>(
-                  initialValue: _overs,
+                TextField(
+                  controller: _overs,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   decoration: const InputDecoration(
                     labelText: 'Overs per match',
+                    hintText: 'Enter overs per innings',
                     prefixIcon: Icon(Icons.timer_outlined, color: AppColors.primary),
                   ),
-                  items: _overOptions.map((o) => DropdownMenuItem(value: o, child: Text('$o overs'))).toList(),
-                  onChanged: (v) => setState(() => _overs = v ?? _overs),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    for (final o in _overPresets)
+                      ActionChip(
+                        label: Text('$o'),
+                        onPressed: () => setState(() => _overs.text = '$o'),
+                      ),
+                  ],
                 ),
               ],
             ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
@@ -10,6 +11,7 @@ import '../../domain/enums/cricket_enums.dart';
 import '../../domain/models/cricket_match.dart';
 import '../../domain/models/innings.dart';
 import '../../shared/providers/repository_providers.dart';
+import '../../shared/widgets/autocomplete_field.dart';
 import '../../shared/widgets/glass_card.dart';
 import '../../shared/widgets/gradient_button.dart';
 import '../../shared/widgets/ui_widgets.dart';
@@ -27,37 +29,65 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _team1 = TextEditingController(text: 'Team A');
   final _team2 = TextEditingController(text: 'Team B');
-  int _overs = AppConstants.defaultOvers;
-  bool _team1BatsFirst = true;
+  final _overs = TextEditingController(text: '${AppConstants.defaultOvers}');
+  int _playersPerSide = 11;
+  bool _tossWonByTeam1 = true;
+  TossDecision _tossDecision = TossDecision.bat;
   BallType _ballType = BallType.leather;
   bool _lbwAllowed = true;
 
-  static const _overOptions = [5, 6, 8, 10, 15, 20, 50];
+  static const _overPresets = [5, 6, 8, 10, 15, 20, 50];
+  static const _sideSizeOptions = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+  static const _maxOvers = 100;
 
   @override
   void dispose() {
     _team1.dispose();
     _team2.dispose();
+    _overs.dispose();
     super.dispose();
   }
 
   void _start() {
-    if (!_formKey.currentState!.validate()) return;
     final t1 = titleCase(_team1.text);
     final t2 = titleCase(_team2.text);
-    final battingFirst = _team1BatsFirst ? t1 : t2;
-    final bowlingFirst = _team1BatsFirst ? t2 : t1;
+    if (t1.isEmpty || t2.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter both team names.')),
+      );
+      return;
+    }
+    final overs = int.tryParse(_overs.text.trim());
+    if (overs == null || overs < 1 || overs > _maxOvers) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Enter a valid number of overs (1–$_maxOvers).')),
+      );
+      return;
+    }
+    final tossWinner = _tossWonByTeam1 ? t1 : t2;
+    final tossLoser = _tossWonByTeam1 ? t2 : t1;
+    // Toss winner bats first only if they chose to bat; otherwise they bowl.
+    final battingFirst = _tossDecision == TossDecision.bat ? tossWinner : tossLoser;
+    final bowlingFirst = battingFirst == t1 ? t2 : t1;
+
+    // Remember the team names so they autocomplete next time.
+    final store = ref.read(playerStoreProvider);
+    store.recordSquad(t1, const []);
+    store.recordSquad(t2, const []);
 
     final match = CricketMatch(
       id: const Uuid().v4(),
       team1: t1,
       team2: t2,
-      overs: _overs,
+      overs: overs,
       battingFirst: battingFirst,
       createdAt: DateTime.now(),
       status: MatchStatus.inProgress,
       ballType: _ballType,
       lbwAllowed: _lbwAllowed,
+      tossWinner: tossWinner,
+      tossDecision: _tossDecision,
+      playersPerSide: _playersPerSide,
       innings: [Innings(battingTeam: battingFirst, bowlingTeam: bowlingFirst)],
     );
 
@@ -68,6 +98,7 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final teamNames = ref.watch(playerStoreProvider).teamNames;
     return Scaffold(
       appBar: AppBar(
         title: const Text(AppStrings.newMatch),
@@ -86,14 +117,11 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
             GlassCard(
               child: Column(
                 children: [
-                  TextFormField(
+                  AutocompleteField(
                     controller: _team1,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: const InputDecoration(
-                      labelText: 'Team 1',
-                      prefixIcon: Icon(Icons.shield_rounded, color: AppColors.primary),
-                    ),
-                    validator: _required,
+                    label: 'Team 1',
+                    suggestions: teamNames,
+                    prefixIcon: const Icon(Icons.shield_rounded, color: AppColors.primary),
                   ),
                   const SizedBox(height: 14),
                   Center(
@@ -111,14 +139,11 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                     ),
                   ),
                   const SizedBox(height: 14),
-                  TextFormField(
+                  AutocompleteField(
                     controller: _team2,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: const InputDecoration(
-                      labelText: 'Team 2',
-                      prefixIcon: Icon(Icons.shield_rounded, color: AppColors.cyan),
-                    ),
-                    validator: _required,
+                    label: 'Team 2',
+                    suggestions: teamNames,
+                    prefixIcon: const Icon(Icons.shield_rounded, color: AppColors.cyan),
                   ),
                 ],
               ),
@@ -129,19 +154,43 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  DropdownButtonFormField<int>(
-                    initialValue: _overs,
+                  TextField(
+                    controller: _overs,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     decoration: const InputDecoration(
                       labelText: 'Overs',
+                      hintText: 'Enter overs per innings',
                       prefixIcon: Icon(Icons.timer_outlined, color: AppColors.primary),
                     ),
-                    items: _overOptions
-                        .map((o) => DropdownMenuItem(value: o, child: Text('$o overs')))
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      for (final o in _overPresets)
+                        ActionChip(
+                          label: Text('$o'),
+                          onPressed: () => setState(() => _overs.text = '$o'),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<int>(
+                    initialValue: _playersPerSide,
+                    dropdownColor: AppColors.surfaceHi,
+                    decoration: const InputDecoration(
+                      labelText: 'Players per side',
+                      helperText: 'All out at one wicket fewer',
+                      prefixIcon: Icon(Icons.groups_rounded, color: AppColors.primary),
+                    ),
+                    items: _sideSizeOptions
+                        .map((n) => DropdownMenuItem(value: n, child: Text('$n a side')))
                         .toList(),
-                    onChanged: (v) => setState(() => _overs = v ?? _overs),
+                    onChanged: (v) => setState(() => _playersPerSide = v ?? _playersPerSide),
                   ),
                   const SizedBox(height: 20),
-                  Text('Batting first', style: Theme.of(context).textTheme.titleSmall),
+                  Text('Toss won by', style: Theme.of(context).textTheme.titleSmall),
                   const SizedBox(height: 10),
                   SizedBox(
                     width: double.infinity,
@@ -150,8 +199,30 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                         ButtonSegment(value: true, label: Text(_team1.text.trim().isEmpty ? 'Team 1' : _team1.text.trim())),
                         ButtonSegment(value: false, label: Text(_team2.text.trim().isEmpty ? 'Team 2' : _team2.text.trim())),
                       ],
-                      selected: {_team1BatsFirst},
-                      onSelectionChanged: (s) => setState(() => _team1BatsFirst = s.first),
+                      selected: {_tossWonByTeam1},
+                      onSelectionChanged: (s) => setState(() => _tossWonByTeam1 = s.first),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text('Elected to', style: Theme.of(context).textTheme.titleSmall),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: SegmentedButton<TossDecision>(
+                      segments: const [
+                        ButtonSegment(
+                          value: TossDecision.bat,
+                          label: Text('Bat'),
+                          icon: Icon(Icons.sports_cricket_rounded),
+                        ),
+                        ButtonSegment(
+                          value: TossDecision.bowl,
+                          label: Text('Bowl'),
+                          icon: Icon(Icons.sports_baseball_outlined),
+                        ),
+                      ],
+                      selected: {_tossDecision},
+                      onSelectionChanged: (s) => setState(() => _tossDecision = s.first),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -204,7 +275,4 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
       ),
     );
   }
-
-  String? _required(String? v) =>
-      (v == null || v.trim().isEmpty) ? 'Required' : null;
 }

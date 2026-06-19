@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/local/local_match_data_source.dart';
 import '../../data/local/local_tournament_data_source.dart';
+import '../../data/local/player_store.dart';
 import '../../data/remote/match_api.dart';
 import '../../data/repositories/match_repository.dart';
 import '../../data/repositories/tournament_repository.dart';
@@ -18,3 +19,6 @@ final matchRepositoryProvider = Provider<MatchRepository>((ref) {
 final tournamentRepositoryProvider = Provider<TournamentRepository>((ref) {
   return TournamentRepository(local: LocalTournamentDataSource());
 });
+
+/// Remembered teams and players for name autocomplete across the app.
+final playerStoreProvider = Provider<PlayerStore>((ref) => PlayerStore());

@@ -21,6 +21,7 @@ class HiveBoxes {
   static const String tournaments = 'tournaments';
   static const String syncQueue = 'sync_queue';
   static const String settings = 'settings';
+  static const String players = 'players';
 }
 
 class AppConstants {

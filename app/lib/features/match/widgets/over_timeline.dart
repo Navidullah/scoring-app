@@ -6,9 +6,12 @@ import '../../../domain/models/ball_event.dart';
 /// This over's deliveries as colored chips. Uses a [Wrap] so a long over flows
 /// onto the next line instead of scrolling off the right edge of the screen.
 class OverTimeline extends StatelessWidget {
-  const OverTimeline({super.key, required this.balls});
+  const OverTimeline({super.key, required this.balls, this.onTapBall});
 
   final List<BallEvent> balls;
+
+  /// Tapping a delivery (e.g. to correct a mistake). Null disables tapping.
+  final void Function(BallEvent ball)? onTapBall;
 
   @override
   Widget build(BuildContext context) {
@@ -17,7 +20,16 @@ class OverTimeline extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('THIS OVER', style: Theme.of(context).textTheme.labelSmall),
+          Row(
+            children: [
+              Text('THIS OVER', style: Theme.of(context).textTheme.labelSmall),
+              if (onTapBall != null && balls.isNotEmpty) ...[
+                const Spacer(),
+                Text('tap a ball to fix',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(color: context.txLow)),
+              ],
+            ],
+          ),
           const SizedBox(height: 10),
           if (balls.isEmpty)
             Text('—', style: TextStyle(color: context.txLow, fontSize: 18))
@@ -25,7 +37,10 @@ class OverTimeline extends StatelessWidget {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: [for (final b in balls) _BallChip(b)],
+              children: [
+                for (final b in balls)
+                  _BallChip(b, onTap: onTapBall == null ? null : () => onTapBall!(b)),
+              ],
             ),
         ],
       ),
@@ -34,8 +49,9 @@ class OverTimeline extends StatelessWidget {
 }
 
 class _BallChip extends StatelessWidget {
-  const _BallChip(this.ball);
+  const _BallChip(this.ball, {this.onTap});
   final BallEvent ball;
+  final VoidCallback? onTap;
 
   List<Color>? get _gradient {
     if (ball.wicket != null) return AppColors.wicketGrad;
@@ -53,7 +69,7 @@ class _BallChip extends StatelessWidget {
     // NOTE: no `alignment` on this Container — inside a Wrap an aligned
     // Container expands to the full available width (each chip would become a
     // full-width bar). We size to content and center via the Center below.
-    return Container(
+    final chip = Container(
       height: 38,
       padding: const EdgeInsets.symmetric(horizontal: 13),
       decoration: BoxDecoration(
@@ -93,5 +109,7 @@ class _BallChip extends StatelessWidget {
         ),
       ),
     );
+    if (onTap == null) return chip;
+    return GestureDetector(onTap: onTap, child: chip);
   }
 }

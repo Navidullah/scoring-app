@@ -30,6 +30,12 @@ enum BallType {
   tennis,
 }
 
+/// What the toss-winning captain chose to do.
+enum TossDecision {
+  bat,
+  bowl,
+}
+
 /// Lifecycle states for a match.
 enum MatchStatus {
   scheduled,

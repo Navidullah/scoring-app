@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/string_utils.dart';
+import '../../../data/local/player_store.dart';
 import '../../../data/remote/sync_api.dart';
 import '../../../data/repositories/match_repository.dart';
 import '../../../domain/enums/cricket_enums.dart';
@@ -16,17 +17,22 @@ import '../../../shared/providers/repository_providers.dart';
 
 const _uuid = Uuid();
 
-/// Standard limit of wickets before an innings ends (no squad size in V1).
-const int _maxWickets = 10;
-
 /// Drives a single live match. Holds the [CricketMatch] as state, applies
 /// scoring rules (strike rotation, over/innings transitions), and persists
 /// every change to the repository (offline-first).
 class LiveScoringController extends StateNotifier<CricketMatch> {
-  LiveScoringController(this._repo, CricketMatch initial, {this.syncApi, this.deviceId})
-      : super(initial);
+  LiveScoringController(
+    this._repo,
+    CricketMatch initial, {
+    this.syncApi,
+    this.deviceId,
+    this.players,
+  }) : super(initial);
 
   final MatchRepository _repo;
+
+  /// Remembers entered players per team for autocomplete in future matches.
+  final PlayerStore? players;
 
   /// Optional cloud push so others can follow the match live. Best-effort.
   final SyncApi? syncApi;
@@ -35,8 +41,15 @@ class LiveScoringController extends StateNotifier<CricketMatch> {
 
   Innings get _inn => state.currentInnings;
 
+  /// Wickets that end an innings for this match's squad size.
+  int get _maxWickets => state.maxWickets;
+
   bool get needsOpeners => _inn.striker == null || _inn.nonStriker == null;
   bool get needsBowler => _inn.bowler == null;
+
+  /// True when the next wicket would be the final one (all out), so no incoming
+  /// batsman is needed.
+  bool get isFinalWicket => _inn.wickets + 1 >= _maxWickets;
 
   /// Distinct bowlers already used this innings, in first-used order.
   List<String> get priorBowlers => _inn.bowlersUsed;
@@ -45,6 +58,22 @@ class LiveScoringController extends StateNotifier<CricketMatch> {
   String? get lastOverBowler => _inn.balls.isEmpty ? null : _inn.balls.last.bowlerName;
   bool get canScore =>
       !state.isComplete && !needsOpeners && !needsBowler && !_inn.isComplete;
+
+  /// Name suggestions for the batting side: this team's saved squad first, then
+  /// every other remembered player.
+  List<String> get battingSuggestions => _suggestionsFor(_inn.battingTeam);
+
+  /// Name suggestions for the fielding side (bowler / fielder entry).
+  List<String> get bowlingSuggestions => _suggestionsFor(_inn.bowlingTeam);
+
+  List<String> _suggestionsFor(String team) {
+    final store = players;
+    if (store == null) return const [];
+    final squad = store.squadFor(team);
+    final seen = {for (final n in squad) n.toLowerCase()};
+    final rest = store.allPlayers.where((n) => !seen.contains(n.toLowerCase()));
+    return [...squad, ...rest];
+  }
 
   void _commit(CricketMatch match) {
     state = match;
@@ -84,12 +113,14 @@ class LiveScoringController extends StateNotifier<CricketMatch> {
   // --- Player setup ---------------------------------------------------------
 
   void setOpeners({required String striker, required String nonStriker}) {
+    players?.recordSquad(_inn.battingTeam, [striker, nonStriker]);
     _commit(state.withCurrentInnings(
       _inn.copyWith(striker: titleCase(striker), nonStriker: titleCase(nonStriker)),
     ));
   }
 
   void setBowler(String name) {
+    players?.recordSquad(_inn.bowlingTeam, [name]);
     _commit(state.withCurrentInnings(_inn.copyWith(bowler: titleCase(name))));
   }
 
@@ -116,6 +147,19 @@ class LiveScoringController extends StateNotifier<CricketMatch> {
     }
   }
 
+  /// A no-ball: a 1-run penalty extra, plus any [batRuns] scored off the bat
+  /// (credited to the striker, rotating strike on odd runs). Not a legal ball,
+  /// so the over does not advance and the next delivery is a free hit.
+  void scoreNoBall({int batRuns = 0}) {
+    if (!canScore) return;
+    _applyBall(
+      runs: batRuns,
+      extraType: ExtraType.noBall,
+      extraRuns: 1,
+      ranBetweenWickets: batRuns,
+    );
+  }
+
   void scoreWicket(
     WicketType type, {
     required String newBatsman,
@@ -123,6 +167,11 @@ class LiveScoringController extends StateNotifier<CricketMatch> {
     bool nonStrikerOut = false,
   }) {
     if (!canScore) return;
+    final hasIncoming = newBatsman.trim().isNotEmpty;
+    if (hasIncoming) players?.recordSquad(_inn.battingTeam, [newBatsman]);
+    if (fielder != null && fielder.trim().isNotEmpty) {
+      players?.recordSquad(_inn.bowlingTeam, [fielder]);
+    }
     // Only a run-out can dismiss the non-striker; everything else is the striker.
     final out = nonStrikerOut ? _inn.nonStriker : _inn.striker;
     _applyBall(
@@ -131,7 +180,8 @@ class LiveScoringController extends StateNotifier<CricketMatch> {
       outBatsman: out,
       fielder: (fielder == null || fielder.trim().isEmpty) ? null : titleCase(fielder),
       ranBetweenWickets: 0,
-      incomingBatsman: titleCase(newBatsman),
+      // No incoming batsman on the final wicket — the innings ends.
+      incomingBatsman: hasIncoming ? titleCase(newBatsman) : null,
       nonStrikerOut: nonStrikerOut,
     );
   }
@@ -143,6 +193,7 @@ class LiveScoringController extends StateNotifier<CricketMatch> {
     if (state.isComplete || _inn.isComplete) return;
     if (replacement.trim().isEmpty) return;
     final name = titleCase(replacement);
+    players?.recordSquad(_inn.battingTeam, [name]);
     _commit(state.withCurrentInnings(
       nonStriker ? _inn.copyWith(nonStriker: name) : _inn.copyWith(striker: name),
     ));
@@ -288,6 +339,42 @@ class LiveScoringController extends StateNotifier<CricketMatch> {
       clearResultText: true,
     ));
   }
+
+  /// Number of deliveries after [ballId] in the current over (0 if it's the
+  /// last ball). Used to warn how many balls a rewind would discard.
+  int ballsAfterInOver(String ballId) {
+    final over = _inn.currentOverBalls;
+    final idx = over.indexWhere((b) => b.id == ballId);
+    if (idx < 0) return 0;
+    return over.length - idx - 1;
+  }
+
+  /// Rewinds the current innings to just before [ballId]: removes that delivery
+  /// and every delivery after it, then restores the exact on-field state (who
+  /// was on strike and bowling) captured on that ball. This lets the scorer
+  /// correct a mistake from earlier in the over and simply re-enter the balls.
+  void rewindToBall(String ballId) {
+    final idx = _inn.balls.indexWhere((b) => b.id == ballId);
+    if (idx < 0) return;
+    final target = _inn.balls[idx];
+    final balls = _inn.balls.sublist(0, idx);
+
+    final restored = Innings(
+      battingTeam: _inn.battingTeam,
+      bowlingTeam: _inn.bowlingTeam,
+      balls: balls,
+      // The rewound ball stored who was on strike/bowling before it happened —
+      // exactly the state to resume from.
+      striker: target.strikerName,
+      nonStriker: target.nonStrikerName,
+      bowler: target.bowlerName,
+      target: _inn.target,
+    );
+    _commit(state.withCurrentInnings(restored).copyWith(
+      status: MatchStatus.inProgress,
+      clearResultText: true,
+    ));
+  }
 }
 
 /// One controller per match id. Reads the match synchronously from Hive.
@@ -303,5 +390,6 @@ final liveScoringControllerProvider = StateNotifierProvider.autoDispose
     match,
     syncApi: ref.read(syncApiProvider),
     deviceId: ref.read(deviceIdProvider),
+    players: ref.read(playerStoreProvider),
   );
 });

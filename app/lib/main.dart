@@ -13,6 +13,7 @@ Future<void> main() async {
   await Hive.openBox<dynamic>(HiveBoxes.settings);
   await Hive.openBox<String>(HiveBoxes.matches); // matches stored as JSON
   await Hive.openBox<String>(HiveBoxes.tournaments); // tournaments as JSON
+  await Hive.openBox<String>(HiveBoxes.players); // saved teams/players as JSON
 
   runApp(const ProviderScope(child: CricketScoringApp()));
 }

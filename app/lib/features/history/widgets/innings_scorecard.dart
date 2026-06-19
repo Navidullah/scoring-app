@@ -9,9 +9,24 @@ import 'manhattan_chart.dart';
 
 /// Full batting + bowling card for a single innings.
 class InningsScorecard extends StatelessWidget {
-  const InningsScorecard({super.key, required this.innings});
+  const InningsScorecard({super.key, required this.innings, this.onTapPlayer});
 
   final Innings innings;
+
+  /// Tapping a batsman/bowler name (opens their profile). Null = names not tappable.
+  final void Function(String name)? onTapPlayer;
+
+  Widget _name(BuildContext context, String name, {required bool bold}) {
+    final text = Text(
+      name,
+      style: TextStyle(
+        fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+        color: onTapPlayer != null ? AppColors.primary : null,
+      ),
+    );
+    if (onTapPlayer == null) return text;
+    return GestureDetector(onTap: () => onTapPlayer!(name), child: text);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -112,7 +127,7 @@ class InningsScorecard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: TextStyle(fontWeight: notOut ? FontWeight.bold : FontWeight.normal)),
+                _name(context, name, bold: notOut),
                 Text(dismissal, style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor)),
               ],
             ),
@@ -148,7 +163,7 @@ class InningsScorecard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Expanded(flex: 4, child: Text(name)),
+          Expanded(flex: 4, child: _name(context, name, bold: false)),
           Expanded(child: Text(st.oversText, textAlign: TextAlign.end)),
           Expanded(child: Text('$maidens', textAlign: TextAlign.end)),
           Expanded(child: Text('${st.runsConceded}', textAlign: TextAlign.end)),

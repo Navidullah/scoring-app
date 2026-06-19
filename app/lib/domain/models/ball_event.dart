@@ -56,7 +56,7 @@ class BallEvent {
       case ExtraType.wide:
         return extraRuns > 1 ? 'Wd${extraRuns - 1}' : 'Wd';
       case ExtraType.noBall:
-        return 'Nb';
+        return runs > 0 ? 'Nb+$runs' : 'Nb';
       case ExtraType.bye:
         return 'B$extraRuns';
       case ExtraType.legBye:

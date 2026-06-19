@@ -8,6 +8,10 @@ BallType _ballTypeFromName(String? n) => n == null
     ? BallType.leather
     : BallType.values.firstWhere((e) => e.name == n, orElse: () => BallType.leather);
 
+TossDecision? _tossDecisionFromName(String? n) => n == null
+    ? null
+    : TossDecision.values.firstWhere((e) => e.name == n, orElse: () => TossDecision.bat);
+
 /// A full match: two teams, overs limit, and one or two innings.
 class CricketMatch {
   const CricketMatch({
@@ -22,6 +26,9 @@ class CricketMatch {
     this.resultText,
     this.ballType = BallType.leather,
     this.lbwAllowed = true,
+    this.tossWinner,
+    this.tossDecision,
+    this.playersPerSide = 11,
   });
 
   final String id;
@@ -35,6 +42,25 @@ class CricketMatch {
   final DateTime createdAt;
   final BallType ballType;
   final bool lbwAllowed;
+
+  /// Team that won the toss, and what they chose. Null for matches created
+  /// before tosses were recorded.
+  final String? tossWinner;
+  final TossDecision? tossDecision;
+
+  /// Players per team. Drives the all-out threshold (squadSize - 1 wickets).
+  /// Defaults to 11 for full-side cricket; smaller for street/tennis games.
+  final int playersPerSide;
+
+  /// Wickets that end an innings (all out) for this match's squad size.
+  int get maxWickets => playersPerSide - 1;
+
+  /// Human-readable toss summary, e.g. "Lions won the toss and chose to bat".
+  String? get tossText {
+    if (tossWinner == null || tossDecision == null) return null;
+    final choice = tossDecision == TossDecision.bat ? 'bat' : 'bowl';
+    return '$tossWinner won the toss and chose to $choice';
+  }
 
   Innings get currentInnings => innings.last;
   bool get isSecondInnings => innings.length == 2;
@@ -70,6 +96,9 @@ class CricketMatch {
       createdAt: createdAt,
       ballType: ballType,
       lbwAllowed: lbwAllowed,
+      tossWinner: tossWinner,
+      tossDecision: tossDecision,
+      playersPerSide: playersPerSide,
     );
   }
 
@@ -92,6 +121,9 @@ class CricketMatch {
         'createdAt': createdAt.toIso8601String(),
         'ballType': ballType.name,
         'lbwAllowed': lbwAllowed,
+        'tossWinner': tossWinner,
+        'tossDecision': tossDecision?.name,
+        'playersPerSide': playersPerSide,
       };
 
   factory CricketMatch.fromJson(Map<String, dynamic> json) => CricketMatch(
@@ -108,5 +140,8 @@ class CricketMatch {
         createdAt: DateTime.parse(json['createdAt'] as String),
         ballType: _ballTypeFromName(json['ballType'] as String?),
         lbwAllowed: (json['lbwAllowed'] as bool?) ?? true,
+        tossWinner: json['tossWinner'] as String?,
+        tossDecision: _tossDecisionFromName(json['tossDecision'] as String?),
+        playersPerSide: (json['playersPerSide'] as int?) ?? 11,
       );
 }

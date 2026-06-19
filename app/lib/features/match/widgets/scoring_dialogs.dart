@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../../domain/enums/cricket_enums.dart';
+import '../../../shared/widgets/autocomplete_field.dart';
 
 const Map<WicketType, String> wicketLabels = {
   WicketType.bowled: 'Bowled',
@@ -13,11 +15,16 @@ const Map<WicketType, String> wicketLabels = {
 };
 
 /// Prompts for the two opening batsmen. Non-dismissible — names are required.
-Future<List<String>?> showOpenersDialog(BuildContext context, {required String teamName}) {
+/// [suggestions] are remembered names offered as autocomplete.
+Future<List<String>?> showOpenersDialog(
+  BuildContext context, {
+  required String teamName,
+  List<String> suggestions = const [],
+}) {
   return showDialog<List<String>>(
     context: context,
     barrierDismissible: false,
-    builder: (_) => _OpenersDialog(teamName: teamName),
+    builder: (_) => _OpenersDialog(teamName: teamName, suggestions: suggestions),
   );
 }
 
@@ -27,11 +34,12 @@ Future<String?> showNameDialog(
   required String title,
   required String label,
   bool dismissible = false,
+  List<String> suggestions = const [],
 }) {
   return showDialog<String>(
     context: context,
     barrierDismissible: dismissible,
-    builder: (_) => _NameDialog(title: title, label: label),
+    builder: (_) => _NameDialog(title: title, label: label, suggestions: suggestions),
   );
 }
 
@@ -42,6 +50,7 @@ Future<String?> showBowlerDialog(
   BuildContext context, {
   required List<String> previousBowlers,
   String? disabledBowler,
+  List<String> suggestions = const [],
 }) {
   return showDialog<String>(
     context: context,
@@ -49,6 +58,39 @@ Future<String?> showBowlerDialog(
     builder: (_) => _BowlerDialog(
       previousBowlers: previousBowlers,
       disabledBowler: disabledBowler,
+      suggestions: suggestions,
+    ),
+  );
+}
+
+/// Prompts for runs scored off the bat on a no-ball (the 1-run penalty is added
+/// automatically). Returns 0..6, or null if cancelled.
+Future<int?> showNoBallRunsDialog(BuildContext context) {
+  return showDialog<int>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('No ball'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Runs off the bat? The no-ball penalty (+1) is added automatically.',
+            style: Theme.of(ctx).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [0, 1, 2, 3, 4, 6]
+                .map((n) => ElevatedButton(
+                      onPressed: () => Navigator.of(ctx).pop(n),
+                      child: Text(n == 0 ? 'None' : '$n'),
+                    ))
+                .toList(),
+          ),
+        ],
+      ),
     ),
   );
 }
@@ -87,6 +129,9 @@ Future<WicketEntry?> showWicketDialog(
   required String nonStriker,
   bool lbwAllowed = true,
   bool runOutOnly = false,
+  bool requireNewBatsman = true,
+  List<String> battingSuggestions = const [],
+  List<String> bowlingSuggestions = const [],
 }) {
   return showDialog<WicketEntry>(
     context: context,
@@ -96,6 +141,9 @@ Future<WicketEntry?> showWicketDialog(
       nonStriker: nonStriker,
       lbwAllowed: lbwAllowed,
       runOutOnly: runOutOnly,
+      requireNewBatsman: requireNewBatsman,
+      battingSuggestions: battingSuggestions,
+      bowlingSuggestions: bowlingSuggestions,
     ),
   );
 }
@@ -108,10 +156,12 @@ Future<RetireEntry?> showRetireDialog(
   BuildContext context, {
   required String striker,
   required String nonStriker,
+  List<String> suggestions = const [],
 }) {
   return showDialog<RetireEntry>(
     context: context,
-    builder: (_) => _RetireDialog(striker: striker, nonStriker: nonStriker),
+    builder: (_) =>
+        _RetireDialog(striker: striker, nonStriker: nonStriker, suggestions: suggestions),
   );
 }
 
@@ -123,8 +173,9 @@ const Map<WicketType, String> _fielderLabel = {
 };
 
 class _OpenersDialog extends StatefulWidget {
-  const _OpenersDialog({required this.teamName});
+  const _OpenersDialog({required this.teamName, this.suggestions = const []});
   final String teamName;
+  final List<String> suggestions;
 
   @override
   State<_OpenersDialog> createState() => _OpenersDialogState();
@@ -148,14 +199,17 @@ class _OpenersDialogState extends State<_OpenersDialog> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          TextField(
+          AutocompleteField(
             controller: _striker,
+            label: 'Striker',
             autofocus: true,
-            decoration: const InputDecoration(labelText: 'Striker'),
+            suggestions: widget.suggestions,
           ),
-          TextField(
+          const SizedBox(height: 8),
+          AutocompleteField(
             controller: _nonStriker,
-            decoration: const InputDecoration(labelText: 'Non-striker'),
+            label: 'Non-striker',
+            suggestions: widget.suggestions,
           ),
         ],
       ),
@@ -175,9 +229,10 @@ class _OpenersDialogState extends State<_OpenersDialog> {
 }
 
 class _NameDialog extends StatefulWidget {
-  const _NameDialog({required this.title, required this.label});
+  const _NameDialog({required this.title, required this.label, this.suggestions = const []});
   final String title;
   final String label;
+  final List<String> suggestions;
 
   @override
   State<_NameDialog> createState() => _NameDialogState();
@@ -196,11 +251,12 @@ class _NameDialogState extends State<_NameDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(widget.title),
-      content: TextField(
+      content: AutocompleteField(
         controller: _controller,
+        label: widget.label,
         autofocus: true,
-        decoration: InputDecoration(labelText: widget.label),
-        onSubmitted: (_) => _submit(),
+        suggestions: widget.suggestions,
+        onSubmitted: _submit,
       ),
       actions: [
         FilledButton(onPressed: _submit, child: const Text('Confirm')),
@@ -221,11 +277,17 @@ class _WicketDialog extends StatefulWidget {
     required this.nonStriker,
     this.lbwAllowed = true,
     this.runOutOnly = false,
+    this.requireNewBatsman = true,
+    this.battingSuggestions = const [],
+    this.bowlingSuggestions = const [],
   });
   final String striker;
   final String nonStriker;
   final bool lbwAllowed;
   final bool runOutOnly;
+  final bool requireNewBatsman;
+  final List<String> battingSuggestions;
+  final List<String> bowlingSuggestions;
 
   @override
   State<_WicketDialog> createState() => _WicketDialogState();
@@ -266,6 +328,7 @@ class _WicketDialogState extends State<_WicketDialog> {
         children: [
           DropdownButtonFormField<WicketType>(
             initialValue: _type,
+            dropdownColor: AppColors.surfaceHi,
             decoration: const InputDecoration(labelText: 'How out?'),
             items: _options
                 .map((w) => DropdownMenuItem(value: w, child: Text(wicketLabels[w]!)))
@@ -291,15 +354,29 @@ class _WicketDialogState extends State<_WicketDialog> {
               ),
             ),
           ],
-          if (needsFielder)
-            TextField(
+          if (needsFielder) ...[
+            const SizedBox(height: 8),
+            AutocompleteField(
               controller: _fielder,
-              decoration: InputDecoration(labelText: fielderLabel),
+              label: fielderLabel,
+              suggestions: widget.bowlingSuggestions,
             ),
-          TextField(
-            controller: _batsman,
-            decoration: const InputDecoration(labelText: 'New batsman'),
-          ),
+          ],
+          if (widget.requireNewBatsman) ...[
+            const SizedBox(height: 8),
+            AutocompleteField(
+              controller: _batsman,
+              label: 'New batsman',
+              suggestions: widget.battingSuggestions,
+            ),
+          ] else
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                'Last wicket — innings ends.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
         ],
       ),
       actions: [
@@ -310,7 +387,7 @@ class _WicketDialogState extends State<_WicketDialog> {
         FilledButton(
           onPressed: () {
             final name = _batsman.text.trim();
-            if (name.isEmpty) return;
+            if (widget.requireNewBatsman && name.isEmpty) return;
             final fielder = _fielder.text.trim();
             Navigator.of(context).pop((
               type: _type,
@@ -327,9 +404,14 @@ class _WicketDialogState extends State<_WicketDialog> {
 }
 
 class _BowlerDialog extends StatefulWidget {
-  const _BowlerDialog({required this.previousBowlers, this.disabledBowler});
+  const _BowlerDialog({
+    required this.previousBowlers,
+    this.disabledBowler,
+    this.suggestions = const [],
+  });
   final List<String> previousBowlers;
   final String? disabledBowler;
+  final List<String> suggestions;
 
   @override
   State<_BowlerDialog> createState() => _BowlerDialogState();
@@ -377,11 +459,12 @@ class _BowlerDialogState extends State<_BowlerDialog> {
             const SizedBox(height: 12),
             Text('or add new', style: Theme.of(context).textTheme.labelMedium),
           ],
-          TextField(
+          AutocompleteField(
             controller: _controller,
+            label: 'New bowler',
             autofocus: !hasPrevious,
-            decoration: const InputDecoration(labelText: 'New bowler'),
-            onSubmitted: (_) => _submitNew(),
+            suggestions: widget.suggestions,
+            onSubmitted: _submitNew,
           ),
         ],
       ),
@@ -393,9 +476,14 @@ class _BowlerDialogState extends State<_BowlerDialog> {
 }
 
 class _RetireDialog extends StatefulWidget {
-  const _RetireDialog({required this.striker, required this.nonStriker});
+  const _RetireDialog({
+    required this.striker,
+    required this.nonStriker,
+    this.suggestions = const [],
+  });
   final String striker;
   final String nonStriker;
+  final List<String> suggestions;
 
   @override
   State<_RetireDialog> createState() => _RetireDialogState();
@@ -433,11 +521,12 @@ class _RetireDialogState extends State<_RetireDialog> {
             ),
           ),
           const SizedBox(height: 8),
-          TextField(
+          AutocompleteField(
             controller: _replacement,
+            label: 'New batsman',
             autofocus: true,
-            decoration: const InputDecoration(labelText: 'New batsman'),
-            onSubmitted: (_) => _submit(),
+            suggestions: widget.suggestions,
+            onSubmitted: _submit,
           ),
         ],
       ),

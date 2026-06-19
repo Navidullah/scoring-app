@@ -16,6 +16,7 @@ import '../../features/tournament/tournament_detail_screen.dart';
 import '../../features/history/history_screen.dart';
 import '../../features/history/scorecard_screen.dart';
 import '../../features/stats/leaderboard_screen.dart';
+import '../../features/stats/player_profile_screen.dart';
 import '../../features/settings/settings_screen.dart';
 
 /// Central route table. Keep paths as named constants to avoid typos.
@@ -105,6 +106,11 @@ final appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.leaderboards,
       builder: (context, state) => const LeaderboardScreen(),
+    ),
+    GoRoute(
+      path: '/player/:name',
+      builder: (context, state) =>
+          PlayerProfileScreen(name: state.pathParameters['name']!),
     ),
     GoRoute(
       path: AppRoutes.settings,

@@ -20,6 +20,19 @@ class LiveApi {
     return data.map((e) => (e as Map).cast<String, dynamic>()).toList();
   }
 
+  /// Global top run-scorers and wicket-takers across all devices. Each row is
+  /// `{ name, value, matches }`.
+  Future<({List<Map<String, dynamic>> runs, List<Map<String, dynamic>> wickets})>
+      leaderboard() async {
+    final res = await _client.get('/leaderboard');
+    final data = (res.data['data'] as Map).cast<String, dynamic>();
+    List<Map<String, dynamic>> rows(String key) =>
+        ((data[key] as List<dynamic>?) ?? const [])
+            .map((e) => (e as Map).cast<String, dynamic>())
+            .toList();
+    return (runs: rows('runs'), wickets: rows('wickets'));
+  }
+
   /// Full snapshot (CricketMatch JSON) for a single match, or null if missing.
   Future<Map<String, dynamic>?> getMatch(String id) async {
     try {

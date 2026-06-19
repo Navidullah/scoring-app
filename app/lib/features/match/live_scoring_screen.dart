@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/config/env.dart';
 import '../../core/theme/app_colors.dart';
 import '../../domain/enums/cricket_enums.dart';
+import '../../domain/models/ball_event.dart';
 import '../../shared/widgets/glass_card.dart';
 import '../../shared/widgets/gradient_button.dart';
 import '../../shared/widgets/ui_widgets.dart';
@@ -91,7 +92,10 @@ class _LiveScoringScreenState extends ConsumerState<LiveScoringScreen> {
                   ),
                 ),
                 // Pinned above the pad so the current over is always fully visible.
-                OverTimeline(balls: match.currentInnings.currentOverBalls),
+                OverTimeline(
+                  balls: match.currentInnings.currentOverBalls,
+                  onTapBall: _controller.canScore ? _onTapBall : null,
+                ),
                 if (match.currentInnings.isFreeHit) const _FreeHitBanner(),
                 ScoringPad(
                   enabled: _controller.canScore,
@@ -113,15 +117,24 @@ class _LiveScoringScreenState extends ConsumerState<LiveScoringScreen> {
 
     if (controller.needsOpeners) {
       _prompting = true;
-      final names = await showOpenersDialog(context, teamName: match.currentInnings.battingTeam);
+      final names = await showOpenersDialog(
+        context,
+        teamName: match.currentInnings.battingTeam,
+        suggestions: controller.battingSuggestions,
+      );
       if (names != null) controller.setOpeners(striker: names[0], nonStriker: names[1]);
       _prompting = false;
     } else if (controller.needsBowler) {
       _prompting = true;
+      // New-bowler autocomplete excludes bowlers already shown as quick-pick chips.
+      final used = controller.priorBowlers.map((b) => b.toLowerCase()).toSet();
       final name = await showBowlerDialog(
         context,
         previousBowlers: controller.priorBowlers,
         disabledBowler: controller.lastOverBowler,
+        suggestions: controller.bowlingSuggestions
+            .where((n) => !used.contains(n.toLowerCase()))
+            .toList(),
       );
       if (name != null) controller.setBowler(name);
       _prompting = false;
@@ -129,7 +142,10 @@ class _LiveScoringScreenState extends ConsumerState<LiveScoringScreen> {
   }
 
   Future<void> _onExtra(ExtraType type) async {
-    if (type == ExtraType.bye || type == ExtraType.legBye) {
+    if (type == ExtraType.noBall) {
+      final batRuns = await showNoBallRunsDialog(context);
+      if (batRuns != null) _controller.scoreNoBall(batRuns: batRuns);
+    } else if (type == ExtraType.bye || type == ExtraType.legBye) {
       final runs = await showRunCountDialog(context, title: type == ExtraType.bye ? 'Byes' : 'Leg byes');
       if (runs != null) _controller.scoreExtra(type, runs: runs);
     } else {
@@ -146,6 +162,9 @@ class _LiveScoringScreenState extends ConsumerState<LiveScoringScreen> {
       nonStriker: inn.nonStriker ?? 'Non-striker',
       lbwAllowed: match.lbwAllowed,
       runOutOnly: inn.isFreeHit,
+      requireNewBatsman: !_controller.isFinalWicket,
+      battingSuggestions: _controller.battingSuggestions,
+      bowlingSuggestions: _controller.bowlingSuggestions,
     );
     if (result != null) {
       _controller.scoreWicket(
@@ -157,6 +176,52 @@ class _LiveScoringScreenState extends ConsumerState<LiveScoringScreen> {
     }
   }
 
+  /// Tapping a delivery in the over offers to rewind to it — removing that ball
+  /// (and any after it this over) so a mis-entry can be re-scored.
+  Future<void> _onTapBall(BallEvent ball) async {
+    final after = _controller.ballsAfterInOver(ball.id);
+    final detail = after == 0
+        ? 'This removes the last ball (${ball.label}) so you can re-enter it.'
+        : 'This removes this ball (${ball.label}) and the $after delivery${after == 1 ? '' : 'ies'} after it, so you can re-enter them.';
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Fix this ball', style: Theme.of(ctx).textTheme.titleLarge),
+              const SizedBox(height: 8),
+              Text(detail, style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(color: ctx.txMid)),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(backgroundColor: AppColors.wicket),
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  icon: const Icon(Icons.undo_rounded),
+                  label: Text(after == 0 ? 'Remove & re-enter' : 'Rewind to here'),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: const Text('Cancel'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (confirmed == true) _controller.rewindToBall(ball.id);
+  }
+
   Future<void> _onRetire() async {
     final inn = ref.read(liveScoringControllerProvider(widget.matchId)).currentInnings;
     if (inn.striker == null || inn.nonStriker == null) {
@@ -165,7 +230,12 @@ class _LiveScoringScreenState extends ConsumerState<LiveScoringScreen> {
       );
       return;
     }
-    final r = await showRetireDialog(context, striker: inn.striker!, nonStriker: inn.nonStriker!);
+    final r = await showRetireDialog(
+      context,
+      striker: inn.striker!,
+      nonStriker: inn.nonStriker!,
+      suggestions: _controller.battingSuggestions,
+    );
     if (r != null) {
       _controller.retire(nonStriker: r.nonStriker, replacement: r.replacement);
     }
