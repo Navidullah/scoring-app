@@ -25,6 +25,7 @@ app/.packages
 
 # --- Local tooling / scratch ---
 .shots/
+/_s_*.png
 
 # --- OS ---
 .DS_Store
